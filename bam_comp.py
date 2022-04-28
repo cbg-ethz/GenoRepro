@@ -106,14 +106,3 @@ class BamComp:
                             label + '_multi': mm
                         })
         self.comp_data = pd.DataFrame.from_dict(self.comp_data).T
-
-from time import time
-st = time()
-test = BamComp([
-    {'label':'b2', 'path':'bowtie2_res.sam', 'tool':'b2'},
-    {'label':'ngm', 'path':'b_ngm_res.bam', 'tool':'ngm'}],
-    'changed_res.csv')
-test.compare()
-test.save()
-print(time() - st)
-
