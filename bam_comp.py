@@ -8,6 +8,7 @@ class BamComp:
         self.output_path = output_path if output_path[-4:] == '.csv' else output_path + 'BamComp_res.csv' #'/path/output.csv'
         self.is_single_ended = is_single_ended
         self.comp_data = {}
+        self.column_names = ['_flags', '_pos', '_chr', '_CIGAR', '_edit_dist', '_quality', '_MD', '_multi']
 
     # Append more files to existing class object
     def append_data(self, label, path, tool):
@@ -64,7 +65,7 @@ class BamComp:
             label, tool_name = file['label'], file['tool']
             if file['path'][-4:] == '.bam': qualifier = 'rb' # for .BAM format files
             elif file['path'][-4:] == '.sam': qualifier = 'r' # for .SAM format files
-            
+
             with pysam.AlignmentFile(file['path'], qualifier) as f:
                 next_line = next(f)
                 for line in f: #reading file line by line 
@@ -94,15 +95,17 @@ class BamComp:
                             label + '_multi': mm[0]
                         })
                     else:
-                        self.comp_data[index].update({
-                            label + '_flags': [reads[0].flag,reads[1].flag],
-                            label + '_pos': [reads[0].reference_start + 1, reads[1].reference_start + 1], #indexing starts from 0
-                            label + '_chr': [reads[0].reference_name, reads[1].reference_name],
-                            label + '_CIGAR': [reads[0].cigarstring, reads[1].cigarstring],
-                            label + '_edit_dist': [get_edit_dist(reads[0].cigar, len(reads[0].query_sequence)),\
-                                                   get_edit_dist(reads[1].cigar, len(reads[1].query_sequence))],
-                            label + '_quality': [reads[0].mapping_quality, reads[1].mapping_quality],
-                            label + '_MD': [find_tag(reads[0].tags, 'MD'), find_tag(reads[1].tags, 'MD')],
-                            label + '_multi': mm
-                        })
+                        parsed_read = {label + column_name : [None, None] for column_name in self.column_names}
+                        for i, read in enumerate(reads):
+                            if read == None: continue
+                            parsed_read[label + '_flags'][i] = read.flag
+                            parsed_read[label + '_pos'][i] = read.reference_start + 1
+                            parsed_read[label + '_chr'][i] = read.reference_name
+                            parsed_read[label + '_CIGAR'][i] = read.cigarstring
+                            parsed_read[label + '_edit_dist'][i] = get_edit_dist(read.cigar, len(read.query_sequence))
+                            parsed_read[label + '_quality'][i] = read.mapping_quality
+                            parsed_read[label + '_MD'][i] = find_tag(read.tags, 'MD')
+                            parsed_read[label + '_multi'][i] = mm[i]
+                        self.comp_data[index].update(parsed_read)
+
         self.comp_data = pd.DataFrame.from_dict(self.comp_data).T
