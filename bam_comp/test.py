@@ -13,15 +13,16 @@ from bam_comp import BamComp
 # -------
 test = BamComp(
     input_data=[
-        {'label':'NGM_1', 'path':'~/GW/b_ngm_res.bam', 'tool':'ngm'},
-        {'label':'BWA_1', 'path':'~/GW/bwa_res.sam', 'tool':'bwa'}
+        {'label':'BWA_1', 'path':'', 'tool':'bwa'},
+        {'label':'BWA_2', 'path':'', 'tool':'bwa'}
         ],
-    output_path='~/GW/output.csv',
-    is_single_ended=0
+    output_path='',
+    is_single_ended=0,
+    enable_caching=True
     )
 
 # As mention before new files can be added with append_data function. Function requires STRING label, path and tool parameters
-test.append_data(label='BOWTIE2_1', path='~/GW/bowtie2_res.bam', tool='')
+# test.append_data(label='BOWTIE2_1', path='~/GW/bowtie2_res.bam', tool='')
 
 # compare function will start parsing for each added file one by one
 test.compare()
