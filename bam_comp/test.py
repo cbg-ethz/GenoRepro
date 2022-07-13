@@ -13,8 +13,7 @@ from bam_comp import BamComp
 # -------
 test = BamComp(
     input_data=[
-        {'label':'BWA_1', 'path':'', 'tool':'bwa'},
-        {'label':'BWA_2', 'path':'', 'tool':'bwa'}
+        {'label':'bowtie_1', 'path':'~/sample.sorted.bam', 'tool':''}
         ],
     output_path='',
     is_single_ended=0,

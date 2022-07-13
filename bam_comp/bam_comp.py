@@ -4,6 +4,7 @@ import psutil
 import glob
 from os import path, makedirs, getcwd, getpid
 import pickle
+from shutil import rmtree
 
 
 def cache(py_object, filename, *subdirectories):
@@ -24,6 +25,12 @@ def decache(filename, *subdirectories):
     with open(abs_path, 'rb') as File:
         decached = pickle.load(File)
     return decached
+
+
+def delete_temp_directory(folder_name: str='temp_cache'):
+    """Deletes temp directory and all its contents"""
+    if path.exists(folder_name):
+        rmtree(folder_name)
 
 
 class BamComp:
@@ -60,19 +67,29 @@ class BamComp:
         if len(output_path) > 0 and output_path[-4:] != '.csv' and '\\' != output_path[-1] != '/': output_path += '/'
         if len(output_path) > 0: self.output_path = output_path if output_path[-4:] == '.csv' else output_path + 'BamComp_res.csv'
         if not multiple_tables:
-            for filename in glob.iglob('temp/cached_reads_*'):
-                rows_dict = decache(filename.split('/')[-1].split('.')[-2], 'temp')
-                pandas_rows = pd.DataFrame.from_dict(rows_dict).T
-                pandas_rows.to_csv(path_or_buf=self.output_path, mode='a')
+            with open(self.output_path, 'w'):
+                pass
+            if self.enable_caching:
+                for filename in glob.iglob(f"temp_cache_{self.input_data[0]['label']}/cached_reads_*"):
+                    rows_dict = decache(filename.split('/')[-1].split('.')[-2], f"temp_cache_{self.input_data[0]['label']}")
+                    pandas_rows = pd.DataFrame.from_dict(rows_dict).T
+                    pandas_rows.to_csv(path_or_buf=self.output_path, mode='a')
+                delete_temp_directory(f"temp_cache_{self.input_data[0]['label']}")
+            else:
+                self.comp_data.to_csv(path_or_buf=self.output_path)
             print('Saved as csv.', self.output_path)
         else:
-            all_columns = self.comp_data.columns
-            output_paths = []
-            for file in self.input_data:
-                output_paths.append(self.output_path[:-4] +  '_' + file['label'] + self.output_path[-4:])
-                file_columns = [column for column in all_columns if column[:len(file['label'])] == file['label']]
-                self.comp_data.to_csv(path_or_buf=output_paths[-1], columns=file_columns)
-            print('Saved as csv. Path:\n', '\n'.join(output_paths), sep='')
+            if not self.enable_caching:
+                all_columns = self.comp_data.columns
+                output_paths = []
+                for file in self.input_data:
+                    output_paths.append(self.output_path[:-4] +  '_' + file['label'] + self.output_path[-4:])
+                    file_columns = [column for column in all_columns if column[:len(file['label'])] == file['label']]
+                    self.comp_data.to_csv(path_or_buf=output_paths[-1], columns=file_columns)
+                print('Saved as csv. Path:\n', '\n'.join(output_paths), sep='')
+            elif self.enable_caching:
+                raise Exception('Caching does not supported in multiple tables mode')
+
 
     def compare(self):
         def get_edit_dist(cigar, reads_len):
@@ -99,7 +116,7 @@ class BamComp:
                         mm[place] = 1
                     else: mm[place] = 0
                 else:
-                    if bin(read.flag)[-9:-8] == '1': mm[place] = 1 # Checking if read have secondary alignment (0x100)
+                    if bin(read.flag)[-9:-8] == '1': mm[place] = 1 # Checking if read has secondary alignment (0x100)
                     else: primary_reads[place] = read
             for i, read in enumerate(primary_reads):
                 if read != None and mm[i] == None: mm[i] = 0
@@ -142,6 +159,7 @@ class BamComp:
                             label + '_MD': find_tag(reads[0].tags, 'MD'),
                             label + '_multi': mm[0]
                         })
+
                     else:
                         parsed_read = {label + column_name : [None, None] for column_name in self.column_names}
                         for i, read in enumerate(reads):
@@ -155,16 +173,17 @@ class BamComp:
                             parsed_read[label + '_MD'][i] = find_tag(read.tags, 'MD')
                             parsed_read[label + '_multi'][i] = mm[i]
                         self.comp_data[index].update(parsed_read)
-                    if self.enable_caching:    
+                    if self.enable_caching:
                         if read_counter % 1000000 == 0:
                             cached_files += 1
-                            cache(self.comp_data, f'cached_reads_{str(cached_files).zfill(3)}', 'temp')
+                            print(f'{read_counter} reads cached, {self.get_current_memory_usage()}G RAM used')
+                            cache(self.comp_data, f'cached_reads_{str(cached_files).zfill(3)}', f"temp_cache_{self.input_data[0]['label']}")
                             self.comp_data = {}
-                        # print(read_counter, self.get_current_memory_usage())
+                            
 
         if self.enable_caching:
             cached_files += 1
-            cache(self.comp_data, f'cached_reads_{str(cached_files).zfill(3)}', 'temp')
+            cache(self.comp_data, f'cached_reads_{str(cached_files).zfill(3)}', f"temp_cache_{self.input_data[0]['label']}")
             self.comp_data = {}
 
         self.comp_data = pd.DataFrame.from_dict(self.comp_data).T
