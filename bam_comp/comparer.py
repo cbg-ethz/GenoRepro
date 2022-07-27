@@ -134,7 +134,7 @@ class Comparer:
 
     @staticmethod
     def crop_read_id(index: str):
-        return index.split('.')[1]
+        return str(index).split('.')[1]
 
 
     def merge_dataframes(self) -> pd.DataFrame:
