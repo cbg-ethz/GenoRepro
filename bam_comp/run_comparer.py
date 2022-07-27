@@ -65,32 +65,32 @@ a.compare()
 #                       | (unfiltered, raw)                 |                      |
 #   --------------------------------------------------------------------------------
 #   Mapped_reads        | Number of reads without those     |                      |
-#                       | which were mapped neither with    |   of Total_reads     |
+#                       | which were mapped neither with    |  from Total_reads    |
 #                       | original nor with replicated data |                      |
 #   --------------------------------------------------------------------------------
-#   Unambiguous_{label} | Number of unambiguous reads       |   of Mapped_reads    |
+#   Unambiguous_{label} | Number of unambiguous reads       |  from Mapped_reads   |
 #                       | by their label                    |                      |
 #   --------------------------------------------------------------------------------
-#   Common_unambiguous  | Number of common unambiguous reads|   of Mapped_reads    |
+#   Common_unambiguous  | Number of common unambiguous reads|  from Mapped_reads   |
 #   --------------------------------------------------------------------------------
-#   Inconsistent_type1  | Unambiguous reads mapped only     |          of          |
+#   Inconsistent_type1  | Unambiguous reads mapped only     |         from         |
 #                       | with original data                |  Common_unambiguous  |
 #   --------------------------------------------------------------------------------
-#   Inconsistent_type2  | Unambiguous reads mapped only     |          of          |
+#   Inconsistent_type2  | Unambiguous reads mapped only     |         from         |
 #                       | with replicated data              |  Common_unambiguous  |
 #   --------------------------------------------------------------------------------
-#   Identical           | Identical reads in terms of       |          of          |
+#   Identical           | Identical reads in terms of       |         from         |
 #                       | position and edit distance        |  Common_unambiguous  |
 #   --------------------------------------------------------------------------------
-#   Consistent_global_  | Common unambiguous reads mapped   |          of          |
+#   Consistent_global_  | Common unambiguous reads mapped   |         from         |
 #   _inconsistent_local | to the same position with         |  Common_unambiguous  |
 #                       | different edit distance           |                      |
 #   --------------------------------------------------------------------------------
-#   Inconsistent_global | Common unambiguous reads mapped   |          of          |
+#   Inconsistent_global | Common unambiguous reads mapped   |         from         |
 #                       | to different positions            |  Common_unambiguous  |
 #                       | with different edit distance      |                      |
 #   --------------------------------------------------------------------------------
-#   Multi_mapped        | Common unambiguous reads mapped   |          of          |
+#   Multi_mapped        | Common unambiguous reads mapped   |         from         |
 #                       | to different positions            |  Common_unambiguous  |
 #                       | with the same edit distance       |                      |
 #   --------------------------------------------------------------------------------

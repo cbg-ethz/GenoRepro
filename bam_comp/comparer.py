@@ -132,6 +132,11 @@ class Comparer:
             raise Exception('At least 2 samples including original required')
 
 
+    @staticmethod
+    def crop_read_id(index: str):
+        return index.split('.')[1]
+
+
     def merge_dataframes(self) -> pd.DataFrame:
         """Merges 2 or 3 dataframes into one in case of multiple tables"""
         paths_to_csv = []
@@ -143,6 +148,8 @@ class Comparer:
         # create list of dataframes
         print('Importing CSV(s)...')
         dataframes = [pd.read_csv(path) for path in unique_paths]
+        for df in dataframes:
+            df['Unnamed: 0'] = df['Unnamed: 0'].map(self.crop_read_id)
         print('\nTables successfully imported')
         print(f'RAM usage: {self.get_current_memory_usage()}')
         # merging if there are multiple tables
