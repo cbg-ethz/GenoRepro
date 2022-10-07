@@ -106,7 +106,9 @@ class BamComp:
         # Returns only primary aligned reads and checking for multimapping.
         def get_primary(reads, tool):
             primary_reads, mm = [None, None], [None, None] # for reads without a pair will be set to None
+            reads_name_counter = {}
             for read in reads:
+                reads_name_counter[read.query_name] = reads_name_counter.get(read.query_name, 0) + 1
                 if bin(read.flag)[-12:-11] == '1': continue # skipping supplementary aligned reads (0x800)
                 place = 1 if bin(read.flag)[-8:-7] == '1' else 0 # position of read in pair (0x80)
                 if tool[:3] == 'bwa' or tool == 'ngm':
@@ -118,10 +120,12 @@ class BamComp:
                 else:
                     if bin(read.flag)[-9:-8] == '1': mm[place] = 1 # Checking if read has secondary alignment (0x100)
                     else: primary_reads[place] = read
+                
             for i, read in enumerate(primary_reads):
                 if read != None and mm[i] == None: mm[i] = 0
+                if read != None and reads_name_counter[read.query_name] > 2:
+                    mm[i] = 1
             return primary_reads, mm
-
         read_counter = 0
         cached_files = 0
 
@@ -132,7 +136,8 @@ class BamComp:
 
             with pysam.AlignmentFile(file['path'], qualifier) as f:
                 next_line = next(f)
-                for line in f: #reading file line by line 
+                unique_reads = {}
+                for line in f: #reading file line by line
                     read_counter += 1
                     reads = [line] #list of reads
                     if next_line.query_name != reads[0].query_name: reads[0], next_line = next_line, reads[0]
@@ -143,8 +148,18 @@ class BamComp:
                             except StopIteration: break #in case end of file is reached
                             if next_line.query_name == reads[0].query_name : #looking for rows with same read ID
                                 reads.append(next_line)
-                            else: break
+                            else: 
+                                break
                     
+                    for read in reads:
+                        if read.query_name in unique_reads:
+                            unique_reads[read.query_name].append(read)
+                        else:
+                            unique_reads[read.query_name] = [read]
+
+
+                for read_ID, reads in unique_reads.items():
+                    print(len(reads), read_ID, [read.reference_name for read in reads])
                     index = reads[0].query_name 
                     reads, mm = get_primary(reads, tool_name)
                     if self.comp_data.get(index, None) == None: self.comp_data[index] = {}
