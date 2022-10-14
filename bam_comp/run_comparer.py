@@ -33,13 +33,13 @@ from comparer import Comparer
 
 input_data = {
     'original': {
-                    'label': '',
-                    'path_to_csv': ''
+                    'label': 'bowtie_SE',
+                    'path_to_csv': '/Users/mike/Documents/Projects/Reproducibility/real_data/10_5_no_duplicates_sub.csv'
                 },
 
     'reversed': {
-                    'label': '',
-                    'path_to_csv': ''
+                    'label': 'bowtie_11',
+                    'path_to_csv': '/Users/mike/Documents/Projects/Reproducibility/real_data/11_5_no_duplicates_sub.csv'
                 },
 
     'shuffled': {
@@ -51,7 +51,7 @@ input_data = {
 output_path = '' # e.g. '~/scratch/project/run_1/output.csv'
 
 
-a = Comparer(input_data, output_path)
+a = Comparer(input_data, output_path, is_real_data=True)
 a.compare()
 
 # OUTPUT

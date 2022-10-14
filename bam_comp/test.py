@@ -13,11 +13,13 @@ from bam_comp import BamComp
 # -------
 test = BamComp(
     input_data=[
-        {'label':'bowtie_100K', 'path':'', 'tool':''}
+        {'label':'bowtie_SE', 'path':'', 'tool':''}
         ],
     output_path='',
-    is_single_ended=0,
-    enable_caching=False
+    is_single_ended=1,
+    enable_caching=False,
+    discard_multimapped_reads=True,
+    is_real_data=True
     )
 
 # As mention before new files can be added with append_data function. Function requires STRING label, path and tool parameters

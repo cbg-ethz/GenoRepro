@@ -66,7 +66,9 @@ class Comparer:
     """
 
 
-    def __init__(self, input_data: dict, output_path: str = '') -> None:
+    def __init__(self, input_data: dict, output_path: str = '',
+                       is_real_data: bool = False) -> None:
+        self.is_real_data = is_real_data
         self.input_data = input_data
         self.output_path = self._parse_output_path(output_path)
         with open(self.output_path, 'w') as output:
@@ -150,12 +152,15 @@ class Comparer:
         dataframes = [pd.read_csv(path) for path in unique_paths]
         for df in dataframes:
             df['Unnamed: 0'] = df['Unnamed: 0'].map(self.crop_read_id)
+            df.drop('Unnamed: 0', axis=1, inplace=True)
         print('\nTables successfully imported')
         print(f'RAM usage: {self.get_current_memory_usage()}')
         # merging if there are multiple tables
         if len(dataframes) == 1:
             return dataframes[0]
         elif len(dataframes) == 2:
+            if self.is_real_data:
+                return pd.concat([*dataframes], axis=1)
             return pd.merge(*dataframes)
         elif len(dataframes) == 3:
             return pd.merge(*dataframes[:2]).merge(dataframes[2])

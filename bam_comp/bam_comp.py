@@ -34,14 +34,19 @@ def delete_temp_directory(folder_name: str='temp_cache'):
 
 
 class BamComp:
-    def __init__(self, input_data=[], output_path='', is_single_ended=0, enable_caching=False):
+    def __init__(self, input_data=[], output_path='', is_single_ended=0, enable_caching=False, discard_multimapped_reads=True,
+                       is_real_data=True):
         if len(output_path) > 0 and output_path[-4:] != '.csv' and '\\' != output_path[-1] != '/': output_path += '/'
         self.input_data = input_data #[{'label': 'Label1', 'path': '/path/input_1.bam', 'tool': 'tool_name'}, ...]
         self.output_path = output_path if output_path[-4:] == '.csv' else output_path + 'BamComp_res.csv' #'/path/output.csv'
         self.is_single_ended = is_single_ended
         self.comp_data = {}
         self.enable_caching = enable_caching
+        self.discard_multimapped_reads = discard_multimapped_reads
+        self.is_real_data = is_real_data
         self.column_names = ['_flags', '_pos', '_chr', '_CIGAR', '_edit_dist', '_quality', '_MD', '_multi']
+        if is_real_data:
+            self.column_names.append('_sequence')
 
 
     @staticmethod
@@ -120,7 +125,7 @@ class BamComp:
                 else:
                     if bin(read.flag)[-9:-8] == '1': mm[place] = 1 # Checking if read has secondary alignment (0x100)
                     else: primary_reads[place] = read
-                
+            
             for i, read in enumerate(primary_reads):
                 if read != None and mm[i] == None: mm[i] = 0
                 if read != None and reads_name_counter[read.query_name] > 2:
@@ -137,6 +142,8 @@ class BamComp:
             with pysam.AlignmentFile(file['path'], qualifier) as f:
                 next_line = next(f)
                 unique_reads = {}
+                if self.is_real_data:
+                    sequence_counter = {}
                 for line in f: #reading file line by line
                     read_counter += 1
                     reads = [line] #list of reads
@@ -150,7 +157,10 @@ class BamComp:
                                 reads.append(next_line)
                             else: 
                                 break
-                    
+                        
+                    if self.is_real_data:
+                        sequence_counter[reads[0].query_sequence] = sequence_counter.get(reads[0].query_sequence, 0) + 1
+
                     for read in reads:
                         if read.query_name in unique_reads:
                             unique_reads[read.query_name].append(read)
@@ -159,12 +169,19 @@ class BamComp:
 
 
                 for read_ID, reads in unique_reads.items():
-                    print(len(reads), read_ID, [read.reference_name for read in reads])
-                    index = reads[0].query_name 
+                    index = reads[0].query_name
                     reads, mm = get_primary(reads, tool_name)
+
+                    if self.discard_multimapped_reads:
+                        if mm[0] != 0:
+                            continue
+                    if self.is_real_data:
+                        if sequence_counter[reads[0].query_sequence] > 1:
+                            continue
+
                     if self.comp_data.get(index, None) == None: self.comp_data[index] = {}
                     if self.is_single_ended:
-                        self.comp_data[index].update({
+                        new_row = {
                             label + '_flags': reads[0].flag,
                             label + '_pos': reads[0].reference_start + 1, #indexing starts from 0
                             label + '_chr': reads[0].reference_name,
@@ -173,7 +190,10 @@ class BamComp:
                             label + '_quality': reads[0].mapping_quality,
                             label + '_MD': find_tag(reads[0].tags, 'MD'),
                             label + '_multi': mm[0]
-                        })
+                        }
+                        if self.is_real_data:
+                            new_row[label + '_sequence'] = reads[0].query_sequence
+                        self.comp_data[index].update(new_row)
 
                     else:
                         parsed_read = {label + column_name : [None, None] for column_name in self.column_names}
@@ -187,6 +207,8 @@ class BamComp:
                             parsed_read[label + '_quality'][i] = read.mapping_quality
                             parsed_read[label + '_MD'][i] = find_tag(read.tags, 'MD')
                             parsed_read[label + '_multi'][i] = mm[i]
+                            if self.is_real_data:
+                                parsed_read[label + '_sequence'][0] = read.query_sequence
                         self.comp_data[index].update(parsed_read)
                     if self.enable_caching:
                         if read_counter % 1000000 == 0:
