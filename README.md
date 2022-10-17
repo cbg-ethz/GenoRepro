@@ -63,9 +63,31 @@ And run the script:
 python test.py
 ```
 
-1. If caching is enabled, parse only one sample per run.
+2. If caching is enabled, parse only one sample per run.
 
-### II. Multiple CSVs -> Features counter
+3. For real data parsing an additional column with read sequence must be generated, so the corresponding argument should be passed as True:
+
+```python3
+is_real_data=True
+```
+
+### III. CSV Subsampling (only for real data samples)
+
+1. Edit `run_subsampler.py` by specifying path to each CSV. Script can subsample CSVs only pairwise at the moment.
+
+```python3
+csv_1 = CSV('/home/user/csv_1.csv') # path to first CSV
+csv_2 = CSV('/home/user/csv_2.csv') # path to second CSV
+```
+
+2. And run the script:
+
+```bash
+python run_subsampler.py
+```
+
+
+### IV. Multiple CSVs -> Features counter
 
 Finally, in order to compare CSVs between each other:
 
