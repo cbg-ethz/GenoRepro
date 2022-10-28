@@ -1,77 +1,54 @@
-# BAM Parser
+# Binary Alignment Map Files Comparer
 
-## How to run BAM Parser
+Set of 3 Python scripts to compare alignment data among replicates.
 
-### 0. Requirements
+## Installation
 
-Before running the BAM parser make sure that:
-
-* BAM file is sorted and indexed, there should be 2 files in the working directory:
-  * <...>.sorted.bam
-  * <...>.sorted.bam.bai
-
-In order to sort and index BAM file run
+First, create a virtual environemnt.
+Then install dependencies via pip:
 
 ```bash
-samtools sort -o <sorted.bam> <initial.bam>
+pip install -r requirements.txt
 ```
 
-Then
+## I. BAM -> CSV
+
+Parser `parser.py` is a command line Python application. \
+To show available commands run:
 
 ```bash
-samtools index <sorted.bam>
+python parser.py --help
 ```
 
-* conda environment contains all the necessary libraries
-
-To install required packages run:
+It requires only path to the input BAM File as a sole argument. There is no need to sort and index BAM Files prior to parsing as well as to specify whether it contains paired end or single end reads. Simply run:
 
 ```bash
-conda install --file requirements.txt
+python parser.py <input_file.bam>
 ```
 
-### I. BAM -> CSV
-
-Open `test.py` file and edit `input_data` array, specifying label, path to the BAM file and tool field in case BAM file was generated using bwa or ngm tool, otherwise it should be left empty.
-Output path can be specified too, otherwise the output CSV will be written in the working directory.
-
-#### Caching
-
-In order to minimize memory usage while parsing large (>15 GB) files caching may be enabled.
-
-```python3
-enable_caching=True
-```
-
-Though there are some exceptions to bear in mind:
-
-1. Caching is not supported in multiple tables mode, so make sure this feature is disabled at the bottom of the script.
-
-```python3
-test.save()
-```
-
-or
-
-```python3
-test.save(multiple_tables=0)
-```
-
-And run the script:
+By default, it creates a CSV File named `parser_output.csv` in the current directory. The output can be specified by providing an absolute or relative path with `-o` option:
 
 ```bash
-python test.py
+python parser.py -o <output_file.csv> <input_file.bam>
 ```
 
-2. If caching is enabled, parse only one sample per run.
+It is also recommended to provide a unique label corresponding to each replicate with `-l` option. For further comparison of replicates of different sizes flag `--real-data` or `-r` should be given.
 
-3. For real data parsing an additional column with read sequence must be generated, so the corresponding argument should be passed as True:
+### Output
 
-```python3
-is_real_data=True
-```
+Generated CSV File will contain only unambiguous (non-multimapped primary alignments) reads (pairs of reads) if flag `--keep-multimapped_reads` was not given.
 
-### III. CSV Subsampling (only for real data samples)
+All the supportive data (e.g. number of reads by type, output path, memory usage) is printed to the stdout.
+
+### Time complexity
+
+Time complexity is O(n) for the algorithm, where n is the number of reads in the BAM File.
+
+### Space complexity
+
+Space complexity is O(1) for the algorithm. Regardless of the replicate size, the script will use no more than 3 GB of memory at peak.
+
+## II. CSV Subsampling (only for real data samples)
 
 1. Edit `run_subsampler.py` by specifying path to each CSV. Script can subsample CSVs only pairwise at the moment.
 
@@ -86,8 +63,7 @@ csv_2 = CSV('/home/user/csv_2.csv') # path to second CSV
 python run_subsampler.py
 ```
 
-
-### IV. Multiple CSVs -> Features counter
+## III. Multiple CSVs -> Features counter
 
 Finally, in order to compare CSVs between each other:
 
@@ -98,7 +74,3 @@ Finally, in order to compare CSVs between each other:
 ```bash
 python run_comparer.py
 ```
-
-## Links
-
-* [Google Drive Folder](https://drive.google.com/drive/folders/1e54IloZcnRdownjMEaMoNSOCQtakF47z)

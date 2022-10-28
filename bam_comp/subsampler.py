@@ -82,7 +82,7 @@ class Subsampler:
 
         df_csv_2 = self.import_dataframe(self.csv_2.path_to_csv)
         seq_column_name_2 = df_csv_2.columns.values.tolist()[-1]
-
+        
         df_csv_1_rv = df_csv_1.copy()
         df_csv_1_rv[seq_column_name_1] = df_csv_1_rv[seq_column_name_1].apply(get_reverse_complement)
 

@@ -161,7 +161,7 @@ class Comparer:
         elif len(dataframes) == 2:
             if self.is_real_data:
                 return pd.concat([*dataframes], axis=1)
-            return pd.merge(*dataframes)
+            return dataframes[0].join(dataframes[1])
         elif len(dataframes) == 3:
             return pd.merge(*dataframes[:2]).merge(dataframes[2])
 
