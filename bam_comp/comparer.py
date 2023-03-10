@@ -1,8 +1,211 @@
+import os
 from dataclasses import dataclass
 import os.path
+from pathlib import Path
+from typing import List
 import psutil
 import pandas as pd
+from Bio.Seq import Seq
+from csvsort import csvsort
+import typer
 import csv
+from itertools import combinations
+
+
+class CSV:
+    def __init__(self, path_to_csv: str, is_original: bool = True):
+        self.path = path_to_csv
+        self.is_single_ended = True
+        self.is_real_data = False
+        self.is_opened = False
+        self.label = self.get_label(self.path)
+        with open(self.path, 'r') as csv_file:
+            reader = csv.reader(csv_file, delimiter=',')
+            self.header = next(reader)
+            if self.header[-1][-8:] == 'sequence':
+                self.is_real_data = True
+        if self.is_real_data:
+            if is_original:
+                self.sub = self.create_sub_csv()
+            else:
+                self.sub = self.path[:-7] + ".sub" + self.path[-4:]
+            # buffer size (in number of reads) for I/O operations
+            self.sub_BUFFER_SIZE = 50_000
+            self.sub_buffered_reads = []
+    
+
+    @staticmethod
+    def get_label(path_to_csv):
+        with open(path_to_csv, 'r') as csv_file:
+            reader = csv.reader(csv_file, delimiter=',')
+            header = next(reader)
+            return header[0][:-5]
+
+
+    def _open(self):
+        self.opened = open(self.path, 'r')
+        self.is_opened = True
+        return self.opened
+
+    def _close(self):
+        self.opened.close()
+        self.is_opened = False
+
+
+    def format_output_path(self, suffix: str):
+        head, tail = os.path.split(self.path)
+        tails = tail.split('.')
+        tails.insert(-1, suffix)
+        tail = '.'.join(tails)
+        output_path = os.path.join(head, tail)
+        return output_path
+
+
+    def create_sub_csv(self, clone_header=True):
+        new_csv_path = self.format_output_path('sub')
+        with open(self.path, 'r') as csv_master:
+            with open(new_csv_path, 'w') as csv_sub:
+                if clone_header:
+                    reader = csv.reader(csv_master, delimiter=',')
+                    writer = csv.writer(csv_sub, delimiter=',')
+                    header = next(reader)
+                    writer.writerow(header[:-1])
+        return new_csv_path
+
+
+    def create_rv_csv(self, column: int = 9):
+        BUFFER_SIZE = 100_000
+        new_csv_path = self.format_output_path(suffix='rv')
+        with open(self.path, 'r') as csv_master:
+            with open(new_csv_path, 'w') as csv_sub:
+                reader = csv.reader(csv_master, delimiter=',')
+                writer = csv.writer(csv_sub, delimiter=',')
+                header = next(reader)
+                writer.writerow(header)
+                buffered_rows = []
+                for row in reader:
+                    reversed_seq = Seq(row[column]).reverse_complement()
+                    new_row = row
+                    new_row[-1] = reversed_seq
+                    buffered_rows.append(new_row)
+                    if len(buffered_rows) == BUFFER_SIZE:
+                        writer.writerows(buffered_rows)
+                        buffered_rows = []
+                if len(buffered_rows) != 0:
+                        writer.writerows(buffered_rows)
+                        buffered_rows = []
+        csvsort(new_csv_path, [column], parallel=False, max_size=1000)
+        return new_csv_path
+    
+
+    def _append(self):
+        """Appends rows to the SUB(!) CSV file"""
+        # print(self.sub_buffered_reads, self.sub)
+        # print()
+        with open(self.sub, 'a') as csv_file:
+            writer = csv.writer(csv_file, delimiter=',')
+            writer.writerows(self.sub_buffered_reads)
+        self.sub_buffered_reads = []
+
+
+    def append_row(self, row):
+        """Appends rows to the SUB(!) CSV file"""
+        self.sub_buffered_reads.append(row)
+        if len(self.sub_buffered_reads) == self.sub_BUFFER_SIZE:
+            self._append()
+
+
+    def finalize_append(self):
+        """Appends rows to the SUB(!) CSV file"""
+        if len(self.sub_buffered_reads) != 0:
+            self._append()
+
+    
+    def get_reader(self):
+        stream = self._open()
+        reader = csv.reader(stream, delimiter=',')
+        return reader
+
+
+class Subsampler:
+    def __init__(self, *csv_files: CSV) -> None:
+        self.csvs_g = csv_files
+        self.csv_rv_paths = [
+            csv_file.create_rv_csv() 
+            for csv_file in csv_files
+                ]
+        self.csvs_rv = [
+            CSV(path, is_original=False)
+            for path in self.csv_rv_paths
+            ]
+
+
+    @staticmethod
+    def find_common_reads(csvs: list[CSV], column: int = -1):
+        """"""
+        def next_row(readers):
+            return [next(reader) for reader in readers]
+        
+        readers = [i_csv.get_reader() for i_csv in csvs]
+        # starting with header row
+        current_rows = next_row(readers)
+        # skipping header row to process 1st read
+        current_rows = next_row(readers)
+
+        while True:
+            try:
+                for i, reader in enumerate(readers):
+                    while current_rows[i-1][column] > current_rows[i][column]:
+                        current_rows[i] = next(reader)
+                    if len(set(row[column] for row in current_rows)) == 1:
+                        yield current_rows
+                        current_rows = [next(reader) for reader in readers]
+            except StopIteration:
+                break
+        
+        # closing previously opened CSV files 
+        for i_csv in csvs:
+            i_csv._close()
+
+
+    @staticmethod
+    def get_combinations(iterable1, iterable2) -> list:
+        """Generator that outputs combination of given iterables"""
+        yield list(iterable1)
+        length = len(iterable1)
+        if length == 2:
+            yield [iterable1[0], iterable2[1]]
+            return
+        length_range = range(length)
+        iterable1_indeces = []
+        current_length = len(iterable1)
+        while current_length != 2:
+            combs = combinations(range(current_length), current_length - 1)
+            iterable1_indeces += list(combs)
+            current_length -= 1
+        iterable2_indeces = [length_range for _ in iterable1_indeces]
+        iterable2_indeces_updated = []
+        for i1, i2 in zip(iterable1_indeces, iterable2_indeces):
+            difference = set(i2).difference(i1)
+            new_i2 = tuple(i for i in i2 if i in difference)
+            iterable2_indeces_updated.append(new_i2)
+        for i1, i2 in zip(iterable1_indeces, iterable2_indeces_updated):
+            yield [iterable1[i] for i in i1] + [iterable2[i] for i in i2]
+
+
+    def run(self):
+        for combinaiton in self.get_combinations(self.csvs_g, self.csvs_rv):
+            for common_reads in self.find_common_reads(combinaiton):
+                # reduce the names of the reads to one common format
+                read_names = sorted(read[0] for read in common_reads)
+                combined_read_name = "_".join(read_names)
+                # iterate and append common read to the corresponding sub-CSV
+                for read, csv_file in zip(common_reads, combinaiton):
+                    read[0] = combined_read_name
+                    csv_file.append_row(read[:-1]) # excluding sequence column
+        # append rows left in the buffer
+        for csv_file in tuple(self.csvs_g) + tuple(self.csvs_rv):
+            csv_file.finalize_append()
 
 
 @dataclass
@@ -66,9 +269,7 @@ class Comparer:
     """
 
 
-    def __init__(self, input_data: dict, output_path: str = '',
-                       is_real_data: bool = False) -> None:
-        self.is_real_data = is_real_data
+    def __init__(self, input_data: dict, output_path: str = '') -> None:
         self.input_data = input_data
         self.output_path = self._parse_output_path(output_path)
         with open(self.output_path, 'w') as output:
@@ -134,11 +335,6 @@ class Comparer:
             raise Exception('At least 2 samples including original required')
 
 
-    @staticmethod
-    def crop_read_id(index: str):
-        return str(index).split('.')[1]
-
-
     def merge_dataframes(self) -> pd.DataFrame:
         """Merges 2 or 3 dataframes into one in case of multiple tables"""
         paths_to_csv = []
@@ -149,26 +345,31 @@ class Comparer:
         unique_paths = list(dict.fromkeys(norm_paths))
         # create list of dataframes
         print('Importing CSV(s)...')
-        dataframes = [pd.read_csv(path) for path in unique_paths]
-        for df in dataframes:
-            df['Unnamed: 0'] = df['Unnamed: 0'].map(self.crop_read_id)
-            df.drop('Unnamed: 0', axis=1, inplace=True)
+        dataframes = [pd.read_csv(path, index_col=0) for path in unique_paths]
         print('\nTables successfully imported')
         print(f'RAM usage: {self.get_current_memory_usage()}')
         # merging if there are multiple tables
         if len(dataframes) == 1:
             return dataframes[0]
         elif len(dataframes) == 2:
-            if self.is_real_data:
-                return pd.concat([*dataframes], axis=1)
-            return dataframes[0].join(dataframes[1])
+            return pd.merge(
+                *dataframes,
+                left_index=True, 
+                right_index=True
+                )
         elif len(dataframes) == 3:
-            return pd.merge(*dataframes[:2]).merge(dataframes[2])
+            return pd.merge(dataframes[0],
+                            dataframes[1], 
+                            left_index=True, 
+                            right_index=True
+                ).merge(dataframes[2], 
+                        left_index=True, 
+                        right_index=True)
 
 
     @staticmethod
     def is_single_ended(dataframe: pd.DataFrame) -> bool:
-        first_row_values = dataframe.loc[0].values[-1]
+        first_row_values = dataframe.iloc[0].values[-1]
         return not isinstance(first_row_values, str)
 
     
@@ -179,7 +380,7 @@ class Comparer:
         usage = process.memory_info().rss # in bytes
         usage_GB = usage * 9.31 * 10 ** (-10) # in Gigabytes
         return round(usage_GB, 3) if in_gigabytes else usage
-    
+
 
     def get_labels(self) -> list:
         labels = [self.original_data.label]
@@ -506,3 +707,65 @@ class Comparer:
         
         print('\nComparision complete')
         print(f'RAM usage: {self.get_current_memory_usage()}')
+
+
+app = typer.Typer(add_completion=False)
+@app.command()
+def main(input_csvs: List[Path] = typer.Argument(
+            ...,
+            exists=True,
+            file_okay=True,
+            dir_okay=False,
+            readable=True,
+            show_default=False,
+            help="List of CSV files to compare; min: 2 files"
+            ),
+         output_path: Path = typer.Option(
+            "./comparer_output.csv",
+            "--output",
+            "-o",
+            help="Path to output directory or file."
+            )
+            ):
+    """
+    Python script that parses Binary Alignment Map File,
+    keeping only primary alignments.
+    
+    """
+
+    csvs = [CSV(input_csv) for input_csv in input_csvs]
+    paths = input_csvs
+
+    if csvs[0].is_real_data:
+        subsampler = Subsampler(*csvs)
+        subsampler.run()
+        paths = [csv_file.sub for csv_file in csvs]
+
+    input_data = {
+        'original': {
+                        'label': csvs[0].label,
+                        'path_to_csv': paths[0]
+                    },
+
+        'reversed': {
+                        'label': csvs[1].label,
+                        'path_to_csv': paths[1]
+                    },
+        
+        'shuffled': {
+                        'label': '',
+                        'path_to_csv': ''
+                    },
+    }
+
+    if len(csvs) > 2:
+        input_data['shuffled'] = {
+                        'label': csvs[2].label,
+                        'path_to_csv': paths[2]
+                    }
+    
+    comparer = Comparer(input_data, output_path=str(output_path))
+    comparer.compare()
+
+if __name__ == "__main__":
+    app()

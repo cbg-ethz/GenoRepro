@@ -1,7 +1,50 @@
+# OUTPUT
+# -------------------------------------
+# Script generates output CSV file.
+# In case of pairwise comparison:
+#   --------------------------------------------------------------------------------
+#   FEATURE             |       NUMBER OF READS             |       PERCENTAGE     |
+#   --------------------------------------------------------------------------------
+#   Total_reads         | Initial number of reads           |     Always 100%      |
+#                       | (unfiltered, raw)                 |                      |
+#   --------------------------------------------------------------------------------
+#   Mapped_reads        | Number of reads without those     |                      |
+#                       | which were mapped neither with    |  from Total_reads    |
+#                       | original nor with replicated data |                      |
+#   --------------------------------------------------------------------------------
+#   Unambiguous_{label} | Number of unambiguous reads       |  from Mapped_reads   |
+#                       | by their label                    |                      |
+#   --------------------------------------------------------------------------------
+#   Common_unambiguous  | Number of common unambiguous reads|  from Mapped_reads   |
+#   --------------------------------------------------------------------------------
+#   Inconsistent_type1  | Unambiguous reads mapped only     |         from         |
+#                       | with original data                |  Common_unambiguous  |
+#   --------------------------------------------------------------------------------
+#   Inconsistent_type2  | Unambiguous reads mapped only     |         from         |
+#                       | with replicated data              |  Common_unambiguous  |
+#   --------------------------------------------------------------------------------
+#   Identical           | Identical reads in terms of       |         from         |
+#                       | position and edit distance        |  Common_unambiguous  |
+#   --------------------------------------------------------------------------------
+#   Consistent_global_  | Common unambiguous reads mapped   |         from         |
+#   _inconsistent_local | to the same position with         |  Common_unambiguous  |
+#                       | different edit distance           |                      |
+#   --------------------------------------------------------------------------------
+#   Inconsistent_global | Common unambiguous reads mapped   |         from         |
+#                       | to different positions            |  Common_unambiguous  |
+#                       | with different edit distance      |                      |
+#   --------------------------------------------------------------------------------
+#   Multi_mapped        | Common unambiguous reads mapped   |         from         |
+#                       | to different positions            |  Common_unambiguous  |
+#                       | with the same edit distance       |                      |
+#   --------------------------------------------------------------------------------
+
+
 from os import path, remove, rename, getpid
 from prettytable import PrettyTable
 from csvsort import csvsort
 from pathlib import Path
+from typing import Union
 import resource
 import psutil
 import pysam
@@ -20,8 +63,13 @@ class SameNameReadsArray(list):
         filtered_reads = SameNameReadsArray()
         for read in self:
             if (
+                # skipping secondary (with double-check)
                 not read.is_secondary and
+                not bin(read.flag)[-9:-8] == '1' and
+                # skipping supplementary (with double-check)
                 not read.is_supplementary and
+                not bin(read.flag)[-12:-11] == '1' and
+                # skipping duplicate
                 not read.is_duplicate
                 ):
                 filtered_reads.append(read)
@@ -117,7 +165,7 @@ class CSV:
             dictwriter_object.writerows(rows)
 
     def sort_csv(self):
-        csvsort(self.path, [9], parallel=False)
+        csvsort(self.path, [9], parallel=False, max_size=1000)
 
     def drop_duplicates(self, column: int=9):
         """Takes SORTED csv file and deletes all duplicate rows inplace"""
@@ -179,6 +227,7 @@ class Parser:
                        output_path: str,
                        discard_multimapped_reads: bool=True):
         self.input_file = input_file
+        self.tool = self.get_tool_name()
         self.label = label
         self.is_real_data = is_real_data
         self.discard_multimapped_reads = discard_multimapped_reads
@@ -215,6 +264,17 @@ class Parser:
                 tail += '.csv'
             output_path = path.join(head, tail)
         return output_path
+    
+
+    def get_tool_name(self) -> Union[str, None]:
+        """Tries to get tool name from header. If fails, returns NoneType"""
+        with pysam.AlignmentFile(self.input_file) as reads:
+            try:
+                header = reads.header.to_dict()
+                tool_name = header['PG'][0]['ID']
+                return str(tool_name)
+            except:
+                return None
 
 
     @staticmethod
@@ -241,13 +301,34 @@ class Parser:
     def run(self):
         """Runs the script"""
         def filter_reads(reads: SameNameReadsArray):
+            def find_tag(tags, target):
+                for tag in tags:
+                    if tag[0] == target: return tag[-1]
+                return None
+
             number_of_reads = len(reads)
             self.all_reads_counter += number_of_reads
             are_mm = number_of_reads > self.max_non_miltimapped_reads
+
+            if self.tool[:3] == 'bwa' or self.tool == 'ngm':
+                for read in reads:
+                    if (
+                        self.tool[:3] == 'bwa' and 
+                        None != find_tag(read.tags, 'XA')
+                        ) or (
+                        self.tool == 'ngm' and 
+                        None != find_tag(read.tags, 'X0') > 0
+                        ):
+                        are_mm = True
+            
             if are_mm:
                 self.multimapped_reads_counter += number_of_reads
                 self.multimapped_reads_by_read_name_counter += 1
-            if number_of_reads > self.max_same_name_reads:
+            if (
+                number_of_reads > self.max_same_name_reads or
+                (self.tool[:3] == 'bwa' or self.tool == 'ngm') and
+                self.discard_multimapped_reads and are_mm
+                ):
                 return (SameNameReadsArray(), are_mm)
             return (reads.keep_only_primary_reads(), are_mm)
         
@@ -311,6 +392,9 @@ class AlignmentFile:
 
 
     def sort_by_name(self) -> str:
+        output_sorted = Path(self.output_sorted_file)
+        if output_sorted.is_file():
+            return self.output_sorted_file # skip sorting if already sorted
         pysam.sort('-o', self.output_sorted_file, '-n', self.input_file)
         return self.output_sorted_file
 
@@ -378,6 +462,7 @@ class MessageFormatter:
         self._write_heading('Input BAM File', input_file.absolute())
         self._write_heading('Output CSV File', 
                             Path(parser.output_path).absolute())
+        self._write_heading('Tool', parser.tool)
         self._write_heading(
             'Data Type',
             "Detected as PAIRED ENDED" if parser.is_paired_ended else
@@ -599,7 +684,7 @@ def main(input_file: Path = typer.Argument(
         generated_csv.drop_duplicates()
 
         tracker.end_tracking()
-        tracker.get_peak_memory_usage()
+        tracker.get_mem_usage()
         messager.print_post_real_data_processing_message()
 
     messager.print_resourse_usage_message(tracker)

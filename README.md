@@ -1,6 +1,6 @@
 # Binary Alignment Map Files Comparer
 
-Set of 3 Python scripts to compare alignment data among replicates.
+Set of 2 Python scripts to compare alignment data among replicates.
 
 ## Installation
 
@@ -10,6 +10,10 @@ Then install dependencies via pip:
 ```bash
 pip install -r requirements.txt
 ```
+
+## Pipeline
+
+![alt text](data/img/pipeline.svg "Title")
 
 ## I. BAM -> CSV
 
@@ -48,29 +52,33 @@ Time complexity is O(n) for the algorithm, where n is the number of reads in the
 
 Space complexity is O(1) for the algorithm. Regardless of the replicate size, the script will use no more than 3 GB of memory at peak.
 
-## II. CSV Subsampling (only for real data samples)
+## II. Comparison
 
-1. Edit `run_subsampler.py` by specifying path to each CSV. Script can subsample CSVs only pairwise at the moment.
+To compare previously obtained CSV files use `compare.py`, which is also a command line Python application. \
 
-```python3
-csv_1 = CSV('/home/user/csv_1.csv') # path to first CSV
-csv_2 = CSV('/home/user/csv_2.csv') # path to second CSV
-```
-
-2. And run the script:
+To show available commands run:
 
 ```bash
-python run_subsampler.py
+python comparer.py --help
 ```
 
-## III. Multiple CSVs -> Features counter
+The data will be automatically subsampled if tables of different size are given.
 
-Finally, in order to compare CSVs between each other:
+During subsampling `input_file.rv.csv` and `input_file.sub.csv` will be generated (corresponding to the sorted table of reversed complemented reads and table with only common reads) for each `input_file.csv`.
 
-1. Edit `run_comparer.py`, specifying label and path to each CSV. Script can compare CSV both pairwise and triplewise. In the latter case just leave the third field blank.
-
-2. And run the script:
-
+To run:
 ```bash
-python run_comparer.py
+python comparer.py -o <features_counts.csv> <input_file1.csv> <input_file2.csv> ...
 ```
+
+### Output
+
+Generated CSV File contains list of counters of selected features.
+
+### Time complexity
+
+Time complexity is O(n) for the subsampling process and O(1) for comparison process.
+
+### Space complexity
+
+Space complexity is O(1) for the subsampling process and O(n) for comparison process.
