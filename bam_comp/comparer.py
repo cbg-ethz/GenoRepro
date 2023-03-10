@@ -100,8 +100,6 @@ class CSV:
 
     def _append(self):
         """Appends rows to the SUB(!) CSV file"""
-        # print(self.sub_buffered_reads, self.sub)
-        # print()
         with open(self.sub, 'a') as csv_file:
             writer = csv.writer(csv_file, delimiter=',')
             writer.writerows(self.sub_buffered_reads)
@@ -141,8 +139,7 @@ class Subsampler:
 
 
     @staticmethod
-    def find_common_reads(csvs: list[CSV], column: int = -1):
-        """"""
+    def find_common_reads(csvs: List[CSV], column: int = -1):
         def next_row(readers):
             return [next(reader) for reader in readers]
         
@@ -733,7 +730,7 @@ def main(input_csvs: List[Path] = typer.Argument(
     
     """
 
-    csvs = [CSV(input_csv) for input_csv in input_csvs]
+    csvs = [CSV(str(input_csv)) for input_csv in input_csvs]
     paths = input_csvs
 
     if csvs[0].is_real_data:
@@ -744,12 +741,12 @@ def main(input_csvs: List[Path] = typer.Argument(
     input_data = {
         'original': {
                         'label': csvs[0].label,
-                        'path_to_csv': paths[0]
+                        'path_to_csv': str(paths[0])
                     },
 
         'reversed': {
                         'label': csvs[1].label,
-                        'path_to_csv': paths[1]
+                        'path_to_csv': str(paths[1])
                     },
         
         'shuffled': {
@@ -761,7 +758,7 @@ def main(input_csvs: List[Path] = typer.Argument(
     if len(csvs) > 2:
         input_data['shuffled'] = {
                         'label': csvs[2].label,
-                        'path_to_csv': paths[2]
+                        'path_to_csv': str(paths[2])
                     }
     
     comparer = Comparer(input_data, output_path=str(output_path))
