@@ -92,7 +92,7 @@ The columns of the output file can be filtered. By default, output file will con
 `edit_dist`, `quality`, `MD`, `multi`. To extract only selected columns use option `--filter` or `-f`. For example, to retain only the columns for mapping position and edit distance, use the following command:
 
 ```bash
-python comparer.py -o <output.csv> -f pos -f edit_dist <input_1.csv> <input_2.csv> ...
+python comparer.py -o <output.csv> -x MM -f pos -f edit_dist <input_1.csv> <input_2.csv> ...
 ```
 
 ### Time complexity
