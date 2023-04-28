@@ -67,14 +67,9 @@ The data will be automatically subsampled if tables of different size are given.
 During subsampling `input_file.rv.csv` and `input_file.sub.csv` will be generated (corresponding to the sorted table of reversed complemented reads and table with only common reads) for each `input_file.csv`.
 
 To run:
+
 ```bash
 python comparer.py -o <output.csv> <input_1.csv> <input_2.csv> ...
-```
-
-The columns of the output file can be filtered. By default, output file will contain all columns for each read: `flags`, `pos`, `chr`, `CIGAR`,
-`edit_dist`, `quality`, `MD`, `multi`. To extract only selected columns use option `--filter` or `-f`. For example, to retain only the columns for mapping position and edit distance, use the following command:
-```bash
-python comparer.py -o <output.csv> -f pos -f edit_dist <input_1.csv> <input_2.csv> ...
 ```
 
 ### Output
@@ -88,8 +83,16 @@ python comparer.py -o <output.csv> -x ID -x MM <input_1.csv> <input_2.csv> ...
 ```
 
 To extract all types of reads to an individual file, use the following command:
+
 ```bash
 python comparer.py -o <output.csv> -x all <input_1.csv> <input_2.csv> ...
+```
+
+The columns of the output file can be filtered. By default, output file will contain all columns for each read: `flags`, `pos`, `chr`, `CIGAR`,
+`edit_dist`, `quality`, `MD`, `multi`. To extract only selected columns use option `--filter` or `-f`. For example, to retain only the columns for mapping position and edit distance, use the following command:
+
+```bash
+python comparer.py -o <output.csv> -f pos -f edit_dist <input_1.csv> <input_2.csv> ...
 ```
 
 ### Time complexity
