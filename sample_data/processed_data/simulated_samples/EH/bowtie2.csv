@@ -1,0 +1,12 @@
+FEATURE,READS,PERCENTAGE
+Total_reads,21483720,100.0
+Mapped_reads,21483711,100.0
+Unambiguous_SIMULATED_bowtie2_EH_g,21483711,100.0
+Unambiguous_SIMULATED_bowtie2_EH_rv,21483711,100.0
+Common_unambiguous,21483711,100.0
+Inconsistent_type1,96,0.0
+Inconsistent_type2,88,0.0
+Identical,21351075,99.383
+Consistent_global_inconsistent_local,79408,0.37
+Inconsistent_global,34355,0.16
+Multi_mapped,18689,0.087

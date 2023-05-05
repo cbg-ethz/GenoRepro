@@ -1,0 +1,12 @@
+FEATURE,READS,PERCENTAGE
+Total_reads,29995502,100.0
+Mapped_reads,29992795,99.991
+Unambiguous_SIMULATED_minimap2_EH_g,29992795,100.0
+Unambiguous_SIMULATED_minimap2_EH_rv,29992795,100.0
+Common_unambiguous,29992795,100.0
+Inconsistent_type1,681,0.002
+Inconsistent_type2,17,0.0
+Identical,26796974,89.345
+Consistent_global_inconsistent_local,18,0.0
+Inconsistent_global,249674,0.832
+Multi_mapped,2945431,9.82
