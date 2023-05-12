@@ -1,45 +1,3 @@
-# OUTPUT
-# -------------------------------------
-# Script generates output CSV file.
-# In case of pairwise comparison:
-#   --------------------------------------------------------------------------------
-#   FEATURE             |       NUMBER OF READS             |       PERCENTAGE     |
-#   --------------------------------------------------------------------------------
-#   Total_reads         | Initial number of reads           |     Always 100%      |
-#                       | (unfiltered, raw)                 |                      |
-#   --------------------------------------------------------------------------------
-#   Mapped_reads        | Number of reads without those     |                      |
-#                       | which were mapped neither with    |  from Total_reads    |
-#                       | original nor with replicated data |                      |
-#   --------------------------------------------------------------------------------
-#   Unambiguous_{label} | Number of unambiguous reads       |  from Mapped_reads   |
-#                       | by their label                    |                      |
-#   --------------------------------------------------------------------------------
-#   Common_unambiguous  | Number of common unambiguous reads|  from Mapped_reads   |
-#   --------------------------------------------------------------------------------
-#   Inconsistent_type1  | Unambiguous reads mapped only     |         from         |
-#                       | with original data                |  Common_unambiguous  |
-#   --------------------------------------------------------------------------------
-#   Inconsistent_type2  | Unambiguous reads mapped only     |         from         |
-#                       | with replicated data              |  Common_unambiguous  |
-#   --------------------------------------------------------------------------------
-#   Identical           | Identical reads in terms of       |         from         |
-#                       | position and edit distance        |  Common_unambiguous  |
-#   --------------------------------------------------------------------------------
-#   Consistent_global_  | Common unambiguous reads mapped   |         from         |
-#   _inconsistent_local | to the same position with         |  Common_unambiguous  |
-#                       | different edit distance           |                      |
-#   --------------------------------------------------------------------------------
-#   Inconsistent_global | Common unambiguous reads mapped   |         from         |
-#                       | to different positions            |  Common_unambiguous  |
-#                       | with different edit distance      |                      |
-#   --------------------------------------------------------------------------------
-#   Multi_mapped        | Common unambiguous reads mapped   |         from         |
-#                       | to different positions            |  Common_unambiguous  |
-#                       | with the same edit distance       |                      |
-#   --------------------------------------------------------------------------------
-
-
 from os import path, remove, rename, getpid
 from prettytable import PrettyTable
 from csvsort import csvsort
@@ -612,8 +570,10 @@ def main(input_file: Path = typer.Argument(
             help=(
                 "Prefix for each column name in the output CSV file. " + 
                 "For further comparison it is " +
-                "recommended to specify different labels for each sample."
-                )
+                "recommended to specify different labels for each sample. "
+                "By default input file basename used."
+                ),
+            show_default=False
             ),
          is_real_data: bool = typer.Option(
             False,
@@ -659,6 +619,8 @@ def main(input_file: Path = typer.Argument(
     tracker.start_tracking()
 
     pysam.set_verbosity(0) # set minimum verbosity to silence index warning
+    if label == "NoLabel":
+        label = Path(input_file).resolve().stem
     parser = Parser(
         input_file = sorted_alignment_file,
         label = label,

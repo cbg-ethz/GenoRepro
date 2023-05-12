@@ -1,0 +1,12 @@
+FEATURE,READS,PERCENTAGE
+Total_reads,26843491,100.0
+Mapped_reads,26843491,100.0
+Unambiguous_SIMULATED_snap_E0_g,26843491,100.0
+Unambiguous_SIMULATED_snap_E0_rv,26843491,100.0
+Common_unambiguous,26843491,100.0
+Inconsistent_type1,0,0.0
+Inconsistent_type2,0,0.0
+Identical,26839233,99.984
+Consistent_global_inconsistent_local,3,0.0
+Inconsistent_global,3460,0.013
+Multi_mapped,795,0.003

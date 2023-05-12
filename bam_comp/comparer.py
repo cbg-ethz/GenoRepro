@@ -1,8 +1,46 @@
+#   --------------------------------------------------------------------------------
+#   FEATURE             |       NUMBER OF READS             |       PERCENTAGE     |
+#   --------------------------------------------------------------------------------
+#   Total_reads         | Initial number of reads           |     Always 100%      |
+#                       | (unfiltered, raw)                 |                      |
+#   --------------------------------------------------------------------------------
+#   Mapped_reads        | Number of reads without those     |                      |
+#                       | which were mapped neither with    |  from Total_reads    |
+#                       | original nor with replicated data |                      |
+#   --------------------------------------------------------------------------------
+#   Unambiguous_{label} | Number of unambiguous reads       |  from Mapped_reads   |
+#                       | by their label                    |                      |
+#   --------------------------------------------------------------------------------
+#   Common_unambiguous  | Number of common unambiguous reads|  from Mapped_reads   |
+#   --------------------------------------------------------------------------------
+#   Inconsistent_type1  | Unambiguous reads mapped only     |         from         |
+#                       | with original data                |  Common_unambiguous  |
+#   --------------------------------------------------------------------------------
+#   Inconsistent_type2  | Unambiguous reads mapped only     |         from         |
+#                       | with replicated data              |  Common_unambiguous  |
+#   --------------------------------------------------------------------------------
+#   Identical           | Identical reads in terms of       |         from         |
+#                       | position and edit distance        |  Common_unambiguous  |
+#   --------------------------------------------------------------------------------
+#   Consistent_global_  | Common unambiguous reads mapped   |         from         |
+#   _inconsistent_local | to the same position with         |  Common_unambiguous  |
+#                       | different edit distance           |                      |
+#   --------------------------------------------------------------------------------
+#   Inconsistent_global | Common unambiguous reads mapped   |         from         |
+#                       | to different positions            |  Common_unambiguous  |
+#                       | with different edit distance      |                      |
+#   --------------------------------------------------------------------------------
+#   Multi_mapped        | Common unambiguous reads mapped   |         from         |
+#                       | to different positions            |  Common_unambiguous  |
+#                       | with the same edit distance       |                      |
+#   --------------------------------------------------------------------------------
+
+
 import os
 from dataclasses import dataclass
 import os.path
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 import psutil
 import pandas as pd
 from Bio.Seq import Seq
@@ -13,6 +51,10 @@ from itertools import combinations
 
 
 class CSV:
+    # used for filtering when extracting specific read types
+    all_columns = ['flags', 'pos', 'chr', 'CIGAR',
+                   'edit_dist', 'quality', 'MD', 'multi']
+
     def __init__(self, path_to_csv: str, is_original: bool = True):
         self.path = path_to_csv
         self.is_single_ended = True
@@ -266,9 +308,14 @@ class Comparer:
     """
 
 
-    def __init__(self, input_data: dict, output_path: str = '') -> None:
+    def __init__(self, input_data: dict, 
+                 output_path: str = '',
+                 reads_to_extract: list = [],
+                 filtered_columns: list = []) -> None:
         self.input_data = input_data
         self.output_path = self._parse_output_path(output_path)
+        self.reads_to_extract = reads_to_extract
+        self.filtered_columns = filtered_columns
         with open(self.output_path, 'w') as output:
             headers = ['FEATURE', 'READS', 'PERCENTAGE']
             writer = csv.DictWriter(output, fieldnames=headers)
@@ -315,6 +362,18 @@ class Comparer:
                 tail += '.csv'
             output_path = os.path.join(head, tail)
         return output_path
+    
+
+    def _get_extract_path(self, read_type: str):
+        return self.output_path[:-4] + f".{read_type}.csv"
+    
+
+    def save_to_csv(self, df: pd.DataFrame,
+                    read_type: str
+                    ):
+        columns = "|".join(self.filtered_columns)
+        csv_path = self._get_extract_path(read_type)
+        df.filter(regex=columns).to_csv(csv_path)
 
 
     def _check_input(self) -> None:
@@ -330,7 +389,7 @@ class Comparer:
             raise Exception('Original sample data not provided')
         if sum(self.comparable) < 2:
             raise Exception('At least 2 samples including original required')
-
+ 
 
     def merge_dataframes(self) -> pd.DataFrame:
         """Merges 2 or 3 dataframes into one in case of multiple tables"""
@@ -452,12 +511,18 @@ class Comparer:
             self.write_row(feature=feature, 
                            reads=df_IT.shape[0],
                            total_reads=df.shape[0])
+            return df_IT
 
         if sum(self.comparable) == 2:
             l1, l2 = self.get_labels()
 
-            find_inconsistent(l1, l2, type_=1, triple_wise=False)
-            find_inconsistent(l2, l1, type_=2, triple_wise=False)
+            df_IT1 = find_inconsistent(l1, l2, type_=1, triple_wise=False)
+            df_IT2 = find_inconsistent(l2, l1, type_=2, triple_wise=False)
+            
+            if any(x in self.reads_to_extract for x in ["all", "IT1"]):
+                self.save_to_csv(df_IT1, "IT1")
+            if any(x in self.reads_to_extract for x in ["all", "IT2"]):
+                self.save_to_csv(df_IT2, "IT2")
 
             df_only_mapped = df.loc[
                 (~df[f'{l1}_pos'].isin(val)) &
@@ -466,11 +531,18 @@ class Comparer:
         elif sum(self.comparable) == 3:
             l1, l2, l3 = self.get_labels()
 
-            find_inconsistent(l1, l2, type_=1, triple_wise=True)
-            find_inconsistent(l2, l1, type_=2, triple_wise=True)
+            df_IT1A = find_inconsistent(l1, l2, type_=1, triple_wise=True)
+            df_IT2A = find_inconsistent(l2, l1, type_=2, triple_wise=True)
 
-            find_inconsistent(l1, l3, type_=1, triple_wise=True)
-            find_inconsistent(l3, l1, type_=2, triple_wise=True)
+            df_IT1B = find_inconsistent(l1, l3, type_=1, triple_wise=True)
+            df_IT2B = find_inconsistent(l3, l1, type_=2, triple_wise=True)
+
+            if any(x in self.reads_to_extract for x in ["all", "IT1"]):
+                self.save_to_csv(df_IT1A, "IT1_A")
+                self.save_to_csv(df_IT1B, "IT1_B")
+            if any(x in self.reads_to_extract for x in ["all", "IT2"]):
+                self.save_to_csv(df_IT2A, "IT2_A")
+                self.save_to_csv(df_IT2B, "IT2_B")
 
             df_only_mapped = df.loc[
                 (~df[f'{l1}_pos'].isin(val)) &
@@ -578,6 +650,9 @@ class Comparer:
             count_identical_between(l1, l2)
             count_identical_between(l1, l3)
             count_identical_between(l2, l3)
+        
+        if any(x in self.reads_to_extract for x in ["all", "ID"]):
+            self.save_to_csv(df_identical, "ID")
 
 
     def count_CG_IL(self, df: pd.DataFrame):
@@ -612,6 +687,9 @@ class Comparer:
             count_CG_IL_between(l1, l2)
             count_CG_IL_between(l1, l3)
             count_CG_IL_between(l2, l3)
+        
+        if any(x in self.reads_to_extract for x in ["all", "CG_IL"]):
+            self.save_to_csv(df_CG_IL, "CG_IL")
 
 
     def count_IG(self, df: pd.DataFrame):
@@ -647,6 +725,9 @@ class Comparer:
             count_IG_between(l1, l3)
             count_IG_between(l2, l3)
 
+        if any(x in self.reads_to_extract for x in ["all", "IG"]):
+            self.save_to_csv(df_IG, "IG")
+
 
     def count_MM(self, df: pd.DataFrame):
         """Counts multi-mapped reads (common unambiguous reads mapped 
@@ -680,6 +761,9 @@ class Comparer:
             count_MM_between(l1, l2)
             count_MM_between(l1, l3)
             count_MM_between(l2, l3)
+
+        if any(x in self.reads_to_extract for x in ["all", "MM"]):
+            self.save_to_csv(df_MM, "MM")
 
 
     def compare(self):
@@ -722,13 +806,78 @@ def main(input_csvs: List[Path] = typer.Argument(
             "--output",
             "-o",
             help="Path to output directory or file."
+            ),
+         reads_to_extract: Optional[List[str]] = typer.Option(
+            [],
+            "--extract",
+            "-x",
+            help="Extract specific type of common reads"
+            ),
+         filtered_columns: Optional[List[str]] = typer.Option(
+            CSV.all_columns,
+            "--filter",
+            "-f",
+            help="Filter columns for extraction of specific read types"
             )
+
             ):
     """
-    Python script that parses Binary Alignment Map File,
-    keeping only primary alignments.
+    Subsampling and comparing tool for parsed CSV files.
     
     """
+    read_types_notation = {
+        "all":  "Extract every read type listed below "
+                "to an individual file.",
+        "ID":   "Identical. Common reads identical by "
+                "position and edit distance.",
+        "CG_IL":"Consistent Global and Inconsistent Local. "
+                "Common unambiguous reads mapped to the same "
+                "position with different edit distance.",
+        "IT1":  "Inconsistent Type 1. Common unambiguous reads "
+                "mapped only with original data (Type 1).",
+        "IT2":  "Inconsistent Type 1. Common unambiguous reads "
+                "only with replicated data (Type 2).",
+        "IG":   "Inconsistent Global. Common unambiguous reads " 
+                "mapped to the different position with "
+                "different edit distance.",
+        "MM":   "Hidden 'Multi-Mapped'. Common unambiguous reads mapped "
+                "to different positions with the same edit distance."
+    }
+
+    column_names_notation = {
+        "flags": "SAM format flag for each read",
+        "pos": "1-based leftmost mapping POSition",
+        "chr": "Chromosome",
+        "CIGAR": "CIGAR string",
+        "edit_dist": "Edit distance",
+        "quality": "ASCII of Phred-scaled base QUALity+33",
+        "MD": "Mismatch - MD tag (if available)",
+        "multi": "multimapping (0 - no multimapping / 1 - read multimapped)"
+    }
+
+    # extraction - input check
+    for read_type in reads_to_extract:
+        if read_type not in read_types_notation.keys():
+            print("INCORRECT INPUT. No such read type:", read_type)
+            print("Only the following types of reads",
+                    "are available for extraction:",
+                    ", ".join(read_types_notation.keys()), "\n")
+            for _type, description in read_types_notation.items():
+                print(f"{_type}: \t{description}")
+            print()
+            raise typer.Abort()
+
+    # filtering - input check
+    for column in filtered_columns:
+        if column not in column_names_notation.keys():
+            print("INCORRECT INPUT. No such column name:", column)
+            print("Only the following column names",
+                    "are available for filtering:",
+                    ", ".join(column_names_notation.keys()), "\n")
+            for _type, description in column_names_notation.items():
+                print(f"{_type}: \t{description}")
+            print()
+            raise typer.Abort()
 
     csvs = [CSV(str(input_csv)) for input_csv in input_csvs]
     paths = input_csvs
@@ -761,8 +910,12 @@ def main(input_csvs: List[Path] = typer.Argument(
                         'path_to_csv': str(paths[2])
                     }
     
-    comparer = Comparer(input_data, output_path=str(output_path))
+    comparer = Comparer(input_data, 
+                        output_path=str(output_path),
+                        reads_to_extract=reads_to_extract,
+                        filtered_columns=filtered_columns)
     comparer.compare()
+
 
 if __name__ == "__main__":
     app()
