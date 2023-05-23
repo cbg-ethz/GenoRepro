@@ -130,3 +130,8 @@ dmypy.json
 bam_comp/temp.py
 **/.DS_Store
 .vscode/settings.json
+
+/toy_data
+/replicates
+temp.py
+config.yaml
