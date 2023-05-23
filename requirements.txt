@@ -36,3 +36,12 @@ wcwidth=0.2.5=pypi_0
 wheel=0.37.1=pyhd3eb1b0_0
 xz=5.2.6=hca72f7f_0
 zlib=1.2.13=h4dc903c_0
+
+psutil~=5.9.3
+pysam~=0.19.1
+typer~=0.6.1
+prettytable~=3.4.1
+csvsort~=1.6.1
+pandas~=1.5.1
+chardet~=5.1.0
+numpy~=1.23.4
