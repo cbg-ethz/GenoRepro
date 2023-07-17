@@ -467,11 +467,19 @@ class Comparer:
         
         if sum(self.comparable) == 2:
             l1, l2 = self.get_labels()
+            df_mapped_g = df.loc[~df[f'{l1}_pos'].isin(val)]
+            self.write_row(feature=f'Mapped_reads_type1', 
+                           reads=df_mapped_g.shape[0],
+                           total_reads=df.shape[0])
+            df_mapped_rep = df.loc[~df[f'{l2}_pos'].isin(val)]
+            self.write_row(feature=f'Mapped_reads_type2',
+                           reads=df_mapped_rep.shape[0],
+                           total_reads=df.shape[0])
             df_mapped = df.loc[
                 (~df[f'{l1}_pos'].isin(val)) |
                 (~df[f'{l2}_pos'].isin(val))
                 ]
-            self.write_row(feature=f'Mapped_reads', 
+            self.write_row(feature=f'Common_mapped_reads', 
                            reads=df_mapped.shape[0],
                            total_reads=df.shape[0])
         elif sum(self.comparable) == 3:
@@ -563,17 +571,17 @@ class Comparer:
         
         l1 = self.original_data.label
         v1 = df.loc[df[f'{l1}_multi'].isin(val)].shape[0]
-        self.write_row(f'Unambiguous_{l1}', v1, df.shape[0])
+        self.write_row('Unambiguous_type1', v1, df.shape[0])
 
         if self.reversed_data.is_comparable:
             l2 = self.reversed_data.label
             v2 = df.loc[df[f'{l2}_multi'].isin(val)].shape[0]
-            self.write_row(f'Unambiguous_{l2}', v2, df.shape[0])
+            self.write_row('Unambiguous_type2', v2, df.shape[0])
 
         if self.shuffled_data.is_comparable:
             l3 = self.shuffled_data.label
             v3 = df.loc[df[f'{l3}_multi'].isin(val)].shape[0]
-            self.write_row(f'Unambiguous_{l3}', v3, df.shape[0])
+            self.write_row('Unambiguous_type3', v3, df.shape[0])
 
 
     def extract_unambiguous(self, df: pd.DataFrame) -> pd.DataFrame:
