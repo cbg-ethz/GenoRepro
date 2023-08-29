@@ -1,0 +1,14 @@
+FEATURE,READS,PERCENTAGE
+Total_reads,13257024,100.0
+Mapped_reads_type1,11805727,89.053
+Mapped_reads_type2,11805394,89.05
+Common_mapped_reads,11807879,89.069
+Unambiguous_type1,11807879,100.0
+Unambiguous_type2,11807879,100.0
+Common_unambiguous,11807879,100.0
+Inconsistent_type1,2485,0.021
+Inconsistent_type2,2152,0.018
+Identical,11715932,99.221
+Consistent_global_inconsistent_local,4595,0.039
+Inconsistent_global,40835,0.346
+Multi_mapped,41880,0.355
