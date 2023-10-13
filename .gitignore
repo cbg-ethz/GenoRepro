@@ -135,3 +135,4 @@ bam_comp/temp.py
 /replicates
 temp.py
 config.yaml
+rf.py
