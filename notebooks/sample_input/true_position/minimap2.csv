@@ -1,7 +1,7 @@
-reads_type,matched_percentage_g,matched_percentage_rc
-ID,0.9901092,0.9901092
-CG_IL,1,1
-IG,0.8485915,0.3717328
-IT1,0.6380032,0
-IT2,0,0
-MM,0.5197797,0.3148714
+reads_type,matched_percentage_g,matched_percentage_rc,matched_percentage_sh
+ID,0.9901092,0.9901092,0.9342832578
+CG_IL,1,1,0
+IG,0.8485915,0.3717328,0
+IT1,0.6380032,0,0
+IT2,0,0,0
+MM,0.5197797,0.3148714,0
