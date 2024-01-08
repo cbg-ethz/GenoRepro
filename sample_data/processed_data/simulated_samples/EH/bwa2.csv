@@ -1,8 +1,0 @@
-FEATURE,READS,PERCENTAGE
-Total_reads,26374054,100.0
-Mapped_reads,26374054,100.0
-Unambiguous_SIMULATED_bwa2_EH_g,26374054,100.0
-Unambiguous_SIMULATED_bwa2_EH_rv,26374054,100.0
-Common_unambiguous,26374054,100.0
-Inconsistent_type1,0,0.0
-Inconsistent_type2,0,0.0
