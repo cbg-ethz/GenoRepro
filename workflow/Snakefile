@@ -1,0 +1,13 @@
+#include: "rules/create_replicate.smk"
+
+rule all:
+    input:
+        file="../work/input.csv",
+        script="scripts/create_replicates.py",
+    params:
+        SEED=2,
+        CORES=1,
+    conda:
+        "envs/replicate.yaml"
+    shell:
+        "python {input.script} --csv_file {input.file}"

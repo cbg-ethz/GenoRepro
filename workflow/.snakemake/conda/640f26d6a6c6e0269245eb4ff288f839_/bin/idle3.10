@@ -1,0 +1,5 @@
+#!/Users/peicer/projects/github_releases/reproducibility/workflow/.snakemake/conda/640f26d6a6c6e0269245eb4ff288f839_/bin/python3.10
+
+from idlelib.pyshell import main
+if __name__ == '__main__':
+    main()

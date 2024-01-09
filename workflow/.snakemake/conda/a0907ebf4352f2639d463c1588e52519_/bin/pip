@@ -1,0 +1,10 @@
+#!/Users/peicer/projects/github_releases/reproducibility/workflow/.snakemake/conda/a0907ebf4352f2639d463c1588e52519_/bin/python3.10
+# -*- coding: utf-8 -*-
+import re
+import sys
+
+from pip._internal.cli.main import main
+
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw?|\.exe)?$', '', sys.argv[0])
+    sys.exit(main())

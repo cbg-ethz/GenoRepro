@@ -1,0 +1,21 @@
+==> 2024-01-08 16:20:18 <==
+# cmd: /Users/peicer/anaconda3/condabin/mamba create --quiet --file /Users/peicer/projects/github_releases/reproducibility/workflow/.snakemake/conda/640f26d6a6c6e0269245eb4ff288f839_.yaml --prefix /Users/peicer/projects/github_releases/reproducibility/workflow/.snakemake/conda/640f26d6a6c6e0269245eb4ff288f839_
+# conda version: 22.9.0
++conda-forge/noarch::pip-23.3.2-pyhd8ed1ab_0
++conda-forge/noarch::setuptools-69.0.3-pyhd8ed1ab_0
++conda-forge/noarch::tzdata-2023d-h0c530f3_0
++conda-forge/noarch::wheel-0.42.0-pyhd8ed1ab_0
++conda-forge/osx-64::bzip2-1.0.8-h10d778d_5
++conda-forge/osx-64::ca-certificates-2023.11.17-h8857fd0_0
++conda-forge/osx-64::chardet-4.0.0-py310h2ec42d9_3
++conda-forge/osx-64::libffi-3.4.2-h0d85af4_5
++conda-forge/osx-64::libsqlite-3.44.2-h92b6c6a_0
++conda-forge/osx-64::libzlib-1.2.13-h8a1eda9_5
++conda-forge/osx-64::ncurses-6.4-h93d8f39_2
++conda-forge/osx-64::openssl-3.2.0-hd75f5a5_1
++conda-forge/osx-64::python-3.10.13-h00d2728_1_cpython
++conda-forge/osx-64::python_abi-3.10-4_cp310
++conda-forge/osx-64::readline-8.2-h9e318b2_1
++conda-forge/osx-64::tk-8.6.13-h1abcd95_1
++conda-forge/osx-64::xz-5.2.6-h775f41a_0
+# update specs: ['chardet=4.0.0']
