@@ -1,1 +1,8 @@
-#add configuration
+replicates:
+  input_folder: "../work/input.csv"
+    #output: "../work/rep_out/"
+
+alignment:
+  reference: "../resources/GRCh38.fna"
+  tool: "bwa_mem"
+  align_script: "../workflow/scripts/bwa_run.sh" 
