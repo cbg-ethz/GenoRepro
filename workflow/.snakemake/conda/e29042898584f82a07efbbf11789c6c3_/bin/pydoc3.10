@@ -1,5 +1,0 @@
-#!/Users/peicer/projects/github_releases/reproducibility/workflow/.snakemake/conda/e29042898584f82a07efbbf11789c6c3_/bin/python3.10
-
-import pydoc
-if __name__ == '__main__':
-    pydoc.cli()

@@ -1,5 +1,0 @@
-#!/Users/peicer/projects/github_releases/reproducibility/workflow/.snakemake/conda/eb5af570708b03c6aae4034089b946e5_/bin/python3.10
-import sys
-from lib2to3.main import main
-
-sys.exit(main("lib2to3.fixes"))
