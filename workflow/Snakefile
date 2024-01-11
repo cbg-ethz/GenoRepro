@@ -7,8 +7,9 @@ if not "REPROFLOW_BASEDIR" in dir():
     REPROFLOW_BASEDIR = workflow.current_basedir
 LOGGER.info("REPROFLOW_BASEDIR = %s", REPROFLOW_BASEDIR)
 
+
 configfile: "config.yaml"
-#configfile: config["configfile"]
+
 
 include: "rules/create_replicates.smk"
 
@@ -16,9 +17,14 @@ include: "rules/create_replicates.smk"
 rule all:
     input:
         #"../work/dummy_output.txt",
-        config["replicates"]["output"]
+        #config["replicates"]["output"]
         #expand("{directory}/output_replicates", directory=config["replicates"]["input"])
+        expand(
+            "output_folder/{sample}_original.bam",
+            output_folder=config["alignment"]["output_folder"],
+            sample=config["alignment"]["samples"],
+        ),
 
-    #shell:
-        #"touch {input}"
 
+# shell:
+# "touch {input}"
