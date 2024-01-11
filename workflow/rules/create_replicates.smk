@@ -3,6 +3,8 @@ rule create_replicates:
         config["replicates"]["input"],
     output:
         directory(config["replicates"]["output"]),
+        #dynamic(directory(config["replicates"]["output"])/"replicates_{sample}.fastq")),
+
         #"{directory}/reiplicates",
     params:
         SEED=2,
