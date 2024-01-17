@@ -213,6 +213,7 @@ class FastqFileReplicator:
         self.output_folder = output_folder
         if output_folder and not os.path.isdir(output_folder):
             os.mkdir(output_folder)
+        self.output_filepaths = []
 
     def fastq_replicator(self, cores: int):
         # Create a multiprocessing pool with a number of cores
@@ -374,6 +375,7 @@ class FastqFileReplicator:
         else:
             with open(output_file, 'wt') as f:
                 SeqIO.write(recs, f, "fastq")
+        self.output_filepaths.append(output_file)
 
 
 # Define the command line interface using Typer
@@ -421,6 +423,8 @@ def main(
     parser = CSVFileParser(csv_file)
     replicator = FastqFileReplicator(parser, seed, output_folder)
     replicator.fastq_replicator(cores=cores)
+    for filepath in replicator.output_filepaths:
+        print(filepath)
 
 
 if __name__ == "__main__":
