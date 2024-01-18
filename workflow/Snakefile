@@ -12,19 +12,47 @@ configfile: "config.yaml"
 
 
 include: "rules/create_replicates.smk"
+include: config["alignment"]["index"]["rule"]
+include: config["alignment"]["align"]["rule"]
+
+#bowtie2_idx_ext = [".1.bt21", ".2.bt21", ".3.bt21", ".4.bt21", ".rev.1.bt21", ".rev.2.bt21"]
+bwa_idx_ext = [".0123", ".amb", ".ann", ".bwt.2bit.64", ".pac"]
+#minima2_idx_ex=[".mmi"]
+
+
+all_mapped_bams = ["mapped/{sample}.bam" for sample in config['replicates']['sample']]
 
 
 rule all:
     input:
-        #"../work/dummy_output.txt",
+        #>>>>>>>>>aligning
+        all_mapped_bams
+
+        #>>>>>>>>>create replicates
         #config["replicates"]["output"]
+        #expand(config["replicates"]["sample"] + "{sample}/replicates/", sample=config["replicates"]["reads"])
+        #>>>>>>>>indexing
+        #config["alignment"]["index"]["ref"] + ".mmi"
+        #expand(config['alignment']['output']+"{sample}.bam", sample=config["samples"])
+        #config["alignment"]["index"]["ref"] + ".mmi"
+        #multiext(config["alignment"]["index"]["ref"], *bowtie2_idx_ext)
+        #multiext(config["alignment"]["index"]["ref"],*bwa_idx_ext)
+
+        #>>>>>>>>>aligning
+        #expand("mapped/{sample}.bam", sample=config['replicates']['sample'])
+
+
+        #"../work/dummy_output.txt",
+        #config["alignment"]["output"]
         #expand("{directory}/output_replicates", directory=config["replicates"]["input"])
-        expand(
-            "output_folder/{sample}_original.bam",
-            output_folder=config["alignment"]["output_folder"],
-            sample=config["alignment"]["samples"],
-        ),
+        #expand(config['alignment'['output']+"{sample}.bam", sample=config["samples"])
+        #expand(
+        #    "output_folder/{sample}_original.bam",
+        #    output_folder=config["alignment"]["output_folder"],
+        #    sample=config["alignment"]["samples"],
+        #),
+        #config["alignment"]["bwa_out"]
 
 
-# shell:
-# "touch {input}"
+    #shell:
+        #"touch {input}"

@@ -2,10 +2,10 @@ rule create_replicates:
     input:
         config["replicates"]["input"],
     output:
-        directory(config["replicates"]["output"]),
+        #directory(config["replicates"]["output"]),
+        directory(config["replicates"]["sample"] + "{sample}/replicates/"),
         #dynamic(directory(config["replicates"]["output"])/"replicates_{sample}.fastq")),
-
-        #"{directory}/reiplicates",
+        #"rep_out/{file}.fastq",
     params:
         SEED=2,
         CORES=1,
