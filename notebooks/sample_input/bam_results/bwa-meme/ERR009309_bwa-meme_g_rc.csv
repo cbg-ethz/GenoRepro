@@ -1,8 +1,9 @@
 FEATURE,READS,PERCENTAGE
-Total_reads,10416003,100.0
-Mapped_reads_type1,10379916,99.654
-Mapped_reads_type2,10379876,99.653
-Common_mapped_reads,10380013,99.654
+Total_FASTQ_reads,12118654,100.0
+Total_BAM_reads,10416003,85.95
+Mapped_reads,10380013,85.653
+Mapped_reads_type1,10379916,85.652
+Mapped_reads_type2,10379876,85.652
 Unambiguous_type1,10380013,100.0
 Unambiguous_type2,10380013,100.0
 Common_unambiguous,10380013,100.0

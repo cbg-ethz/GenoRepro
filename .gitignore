@@ -136,3 +136,4 @@ bam_comp/temp.py
 temp.py
 config.yaml
 rf.py
+bam_comp/count_fastq.py
