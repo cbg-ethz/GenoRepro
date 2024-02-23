@@ -1,18 +1,19 @@
-import csv
+import base64
+import hashlib
 import math
 import os
+import time
 from collections import namedtuple
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, Union, List, Tuple
-import chardet
+from typing import Literal, List, Tuple
 import numpy as np
 import typer
 import re
 from Bio import SeqIO
 from Bio.Seq import Seq
-import multiprocessing as mp
 import gzip
+from numpy.random import default_rng
 
 # The namedTuple represents a row of data in the input csv file
 InfoTuple = namedtuple("InfoTuple",
@@ -65,14 +66,9 @@ class InputFileParser:
         # self.file_tuple = ()
 
         self.fastq1 = os.path.basename(fastq1)
-        self.fastq2 = os.path.basename(fastq2)
+        if fastq2 is not None:
+            self.fastq2 = os.path.basename(fastq2)
         self.fastq_path = Path(os.path.dirname(fastq1))
-
-        # print('-----------------------------------')
-        # print(f'directory: {self.fastq_path}')
-        # print(f'file1: {self.fastq1}')
-        # print(f'file2: {self.fastq2}')
-        # print('-----------------------------------')
 
         file_names, parsed_names = self._check_fastq_files(self.fastq_path,
                                                            self.fastq_type,
@@ -92,16 +88,21 @@ class InputFileParser:
                                     self.rep_num
                                     )
 
+        print('-----------------------------------')
+        print(f'directory: {self.fastq_path}')
+        print(f'file1: {self.fastq1}')
+        print(f'file2: {self.fastq2}')
+        print(f'fastq_type: {self.fastq_type}')
+        print(f'rep_type: {self.rep_type}')
+        print(f'rep_num: {self.rep_num}')
+        print('-----------------------------------')
+
     @staticmethod
     def _check_fastq_files(
             file_path: Path,
             fastq_type: str,
             file1: str,
             file2: str = None) -> tuple[list[str], ParsedFastqFileName]:
-
-        # print(file1)
-        # print(file_path)
-        # print(f"{file_path} / {file1}")
 
         if file2 is not None:
             if not (file_path / file1).is_file() or not (file_path / file2).is_file() or not file1.endswith(
@@ -184,6 +185,7 @@ class FastqFileReplicator:
 
         if out_folder and not os.path.isdir(out_folder):
             os.mkdir(out_folder)
+        self.output_filepaths = []
 
     def fastq_replicator(self):
         self._process_tuple(self.info_tuple)
@@ -209,12 +211,20 @@ class FastqFileReplicator:
             return number
 
         def shuffle(records: list, orders: list, keep_orders: bool = False):
-            np.random.seed(self.seed)
-            for i in range(_limit_number_of_replicates(info)):
+            total_shuffles_required = _limit_number_of_replicates(info)
+            existing_shuffles, remaining_idx = self._count_existing_files(info, total_shuffles_required, int(keep_orders))
+            remaining_shuffles = total_shuffles_required - existing_shuffles
+            for i, ids in zip(range(len(remaining_idx)), remaining_idx):
+
+                unique_seed = self._generate_unique_seed(self.info_tuple, ids)
+
+                np.random.seed(unique_seed)
+
+                # default_rng(self.seed + ids)
                 shuffled_records = self._shuffle_records(
                     records, orders, keep_orders, i
                 )
-                self._write_records(shuffled_records, info, i, int(keep_orders))
+                self._write_records(shuffled_records, info, ids, int(keep_orders))
 
         def rev_comp(records: list, write_to_file: bool = True, read: int = 0):
             rc_records = self._reverse_complement_records(records)
@@ -228,72 +238,62 @@ class FastqFileReplicator:
         records = []
 
         for idx, file_name in enumerate(info.file_names):
-            # print(idx, file_name)
             file_path = os.path.join(info.directory_path, file_name)
 
-            # If the pair type is single, process the single-end file
             if info.pair_type == 'single':
                 records = _get_records(file_path)
-
                 if info.replicate_type == 'shuffle':
                     shuffle(records, generated_orders)
-
                 elif info.replicate_type == "reverse_complement":
                     rev_comp(records, write_to_file=True)
 
-                elif info.replicate_type == 'both':
-                    rc_records = rev_comp(records, write_to_file=False)
-                    shuffle(rc_records, generated_orders)
-
-            # Process two paired-end files, one per iteration
             elif info.pair_type == 'paired':
                 records = _get_records(file_path)
-
                 if info.replicate_type == 'shuffle':
-                    # If it's the first reads in pair shuffle anyway
                     if idx == 0:
                         shuffle(records, generated_orders)
-                    # If it's the second reads in pair, use already
-                    # generated orders for the first reads in pair
                     elif idx == 1:
                         shuffle(records, generated_orders, keep_orders=True)
-
                 elif info.replicate_type == "reverse_complement":
                     rev_comp(records, write_to_file=True, read=idx)
 
-                elif info.replicate_type == 'both':
-                    rc_records = rev_comp(records, write_to_file=False)
-                    # If it's the first list of records in pair shuffle anyway
-                    if idx == 0:
-                        shuffle(rc_records, generated_orders)
-                    # If it's the second list of records in pair, use already
-                    # generated orders for the first list of records
-                    elif idx == 1:
-                        shuffle(rc_records, generated_orders, keep_orders=True)
-
     @staticmethod
-    def _shuffle_records(
-            records: list,
-            generated_orders: list,
-            keep_orders: bool = False,
-            i: int = -1
-    ):
+    def _shuffle_records(records: list,
+                         generated_orders: list,
+                         keep_orders: bool = False,
+                         i: int = -1
+                         ):
         """Shuffle a list of records using
-        the Fisher-Yates shuffle algorithm."""
+                the Fisher-Yates shuffle algorithm."""
+
+        # change generate_orders list
+        # try another random generator
         if keep_orders:
             for k in range(len(records)):
                 yield records[generated_orders[i][k]]
         else:
             original_order = list(range(len(records)))
             new_order = original_order.copy()
-            while new_order == original_order or \
-                    new_order in generated_orders:
-                np.random.shuffle(new_order)
 
+            while new_order == original_order:
+                np.random.shuffle(new_order)
             generated_orders.append(new_order)
 
             for k in range(len(records)):
                 yield records[new_order[k]]
+
+    @staticmethod
+    def _generate_unique_seed(row, rep_id) -> int:
+        hasher = hashlib.sha256()
+        hasher.update(row.parsed_names.base.encode('utf-8'))
+        hasher.update(str(rep_id).encode('utf-8'))
+
+        hex_dig = int(hasher.hexdigest(),16)
+        hex_dig = hex_dig % (2 ** 32)
+
+        print(hex_dig)
+
+        return hex_dig
 
     @staticmethod
     def _reverse_complement_records(records):
@@ -312,16 +312,16 @@ class FastqFileReplicator:
         return rev_record
 
     def _get_output_file_path(self, row, read=0, idx=0):
-        def build_name(rep_type: str) -> Path:
+        def build_name(rep_type: str) -> str:
             filename = f"{row.parsed_names.base}_{rep_type}"
             if rep_type != "rc":
                 filename += f"{idx + 1}"
             if row.parsed_names.pair_type == "paired":
                 filename += f"{row.parsed_names.read[read]}"
+
             filename += f"{row.parsed_names.ext[read]}"
             if not self.output_folder:
                 self.output_folder = row.directory_path
-            self.filenames.append(os.path.join(self.output_folder, filename))
             return os.path.join(self.output_folder, filename)
 
         if row.replicate_type == 'shuffle':
@@ -331,6 +331,22 @@ class FastqFileReplicator:
         elif row.replicate_type == 'both':
             return build_name(row.replicate_type)
 
+    def _count_existing_files(self, info, total_required, mate) -> list[int | list[int]]:
+        existing_files = 0
+        remaining_idx = []
+        for idx in range(total_required):
+            output_file = self._get_output_file_path(info, mate, idx)
+            if os.path.exists(output_file):
+                # print('exists: ', idx, output_file)
+                existing_files += 1
+            else:
+                # print('dont exist: ', idx, output_file)
+                remaining_idx.append(idx)
+
+            # print('------'*20)
+        # print('remaining_idx: ', remaining_idx)
+        return [existing_files, remaining_idx]
+
     def _write_records(self, recs, row, idx=0, read=0):
         output_file = self._get_output_file_path(row=row, idx=idx, read=read)
         if output_file.endswith("gz"):
@@ -339,22 +355,11 @@ class FastqFileReplicator:
         else:
             with open(output_file, 'wt') as f:
                 SeqIO.write(recs, f, "fastq")
+        self.output_filepaths.append(output_file)
 
 
 @app.command()
 def main(
-
-        # input_folder: Path = typer.Option(
-        #     ...,
-        #     "--input_folder", "-i",
-        #     file_okay=False,
-        #     dir_okay=True,
-        #     writable=True,
-        #     readable=True,
-        #     resolve_path=True,
-        #     show_default=False,
-        #     help="Path to the input FASTQ files"
-        # ),
 
         fastq_file1: str = typer.Option(
             ...,
@@ -363,7 +368,7 @@ def main(
         ),
 
         fastq_file2: str = typer.Option(
-            ...,
+            None,
             "--fastq_file2", "-f2",
             help="Name of to the second FASTQ file for paired data"
         ),
