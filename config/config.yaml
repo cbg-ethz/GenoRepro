@@ -1,8 +1,11 @@
-replicates:
-  input_folder: "../work/input.csv"
-    #output: "../work/rep_out/"
+replicate:
+  input_folder: "../work/samples/"
+  output_folder: "../work/results/"
+  seed: 1
+  replicate_number: 5
+  replicate_type: "rc"
+  pair_type: "paired"
 
 alignment:
-  reference: "../resources/GRCh38.fna"
-  tool: "bwa_mem"
-  align_script: "../workflow/scripts/bwa_run.sh" 
+  index:
+  align:
