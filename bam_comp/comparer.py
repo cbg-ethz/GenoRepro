@@ -89,14 +89,12 @@ class CSV:
             self.sub_BUFFER_SIZE = 50_000
             self.sub_buffered_reads = []
 
-
     @staticmethod
     def get_label(path_to_csv):
         with open(path_to_csv, 'r') as csv_file:
             reader = csv.reader(csv_file, delimiter=',')
             header = next(reader)
             return header[0][:-5]
-
 
     def _open(self):
         self.opened = open(self.path, 'r')
@@ -107,7 +105,6 @@ class CSV:
         self.opened.close()
         self.is_opened = False
 
-
     def format_output_path(self, suffix: str):
         head, tail = os.path.split(self.path)
         tails = tail.split('.')
@@ -115,7 +112,6 @@ class CSV:
         tail = '.'.join(tails)
         output_path = os.path.join(head, tail)
         return output_path
-
 
     def create_sub_csv(self, clone_header=True):
         new_csv_path = self.format_output_path('sub')
@@ -127,7 +123,6 @@ class CSV:
                     header = next(reader)
                     writer.writerow(header[:-1])
         return new_csv_path
-
 
     def create_rv_csv(self, column: int = 9):
         BUFFER_SIZE = 100_000
@@ -148,11 +143,10 @@ class CSV:
                         writer.writerows(buffered_rows)
                         buffered_rows = []
                 if len(buffered_rows) != 0:
-                        writer.writerows(buffered_rows)
-                        buffered_rows = []
+                    writer.writerows(buffered_rows)
+                    buffered_rows = []
         csvsort(new_csv_path, [column], parallel=False, max_size=1000)
         return new_csv_path
-
 
     def _append(self):
         """Appends rows to the SUB(!) CSV file"""
@@ -161,19 +155,16 @@ class CSV:
             writer.writerows(self.sub_buffered_reads)
         self.sub_buffered_reads = []
 
-
     def append_row(self, row):
         """Appends rows to the SUB(!) CSV file"""
         self.sub_buffered_reads.append(row)
         if len(self.sub_buffered_reads) == self.sub_BUFFER_SIZE:
             self._append()
 
-
     def finalize_append(self):
         """Appends rows to the SUB(!) CSV file"""
         if len(self.sub_buffered_reads) != 0:
             self._append()
-
 
     def get_reader(self):
         stream = self._open()
@@ -187,12 +178,11 @@ class Subsampler:
         self.csv_rv_paths = [
             csv_file.create_rv_csv()
             for csv_file in csv_files
-                ]
+        ]
         self.csvs_rv = [
             CSV(path, is_original=False)
             for path in self.csv_rv_paths
-            ]
-
+        ]
 
     @staticmethod
     def find_common_reads(csvs: List[CSV], column: int = -1):
@@ -208,7 +198,7 @@ class Subsampler:
         while True:
             try:
                 for i, reader in enumerate(readers):
-                    while current_rows[i-1][column] > current_rows[i][column]:
+                    while current_rows[i - 1][column] > current_rows[i][column]:
                         current_rows[i] = next(reader)
                     if len(set(row[column] for row in current_rows)) == 1:
                         yield current_rows
@@ -219,7 +209,6 @@ class Subsampler:
         # closing previously opened CSV files
         for i_csv in csvs:
             i_csv._close()
-
 
     @staticmethod
     def get_combinations(iterable1, iterable2) -> list:
@@ -245,7 +234,6 @@ class Subsampler:
         for i1, i2 in zip(iterable1_indeces, iterable2_indeces_updated):
             yield [iterable1[i] for i in i1] + [iterable2[i] for i in i2]
 
-
     def run(self):
         for combinaiton in self.get_combinations(self.csvs_g, self.csvs_rv):
             for common_reads in self.find_common_reads(combinaiton):
@@ -255,7 +243,7 @@ class Subsampler:
                 # iterate and append common read to the corresponding sub-CSV
                 for read, csv_file in zip(common_reads, combinaiton):
                     read[0] = combined_read_name
-                    csv_file.append_row(read[:-1]) # excluding sequence column
+                    csv_file.append_row(read[:-1])  # excluding sequence column
         # append rows left in the buffer
         for csv_file in tuple(self.csvs_g) + tuple(self.csvs_rv):
             csv_file.finalize_append()
@@ -321,7 +309,6 @@ class Comparer:
         Pandas DataFrame of unambiguous reads
     """
 
-
     def __init__(self, input_data: dict,
                  output_path: str = '',
                  reads_to_extract: list = [],
@@ -335,7 +322,6 @@ class Comparer:
             writer = csv.DictWriter(output, fieldnames=headers)
             writer.writeheader()
         self._check_input()
-
 
     def write_row(self, feature: str, reads: int, total_reads: int):
         """
@@ -357,10 +343,9 @@ class Comparer:
                 "FEATURE": feature,
                 "READS": reads,
                 "PERCENTAGE": round(100 * reads / total_reads, 3)
-                }
+            }
             dictwriter_object = csv.DictWriter(f, header)
             dictwriter_object.writerow(row)
-
 
     @staticmethod
     def _parse_output_path(output_path) -> str:
@@ -377,10 +362,8 @@ class Comparer:
             output_path = os.path.join(head, tail)
         return output_path
 
-
     def _get_extract_path(self, read_type: str):
         return self.output_path[:-4] + f".{read_type}.csv"
-
 
     def save_to_csv(self, df: pd.DataFrame,
                     read_type: str
@@ -388,7 +371,6 @@ class Comparer:
         columns = "|".join(self.filtered_columns)
         csv_path = self._get_extract_path(read_type)
         df.filter(regex=columns).to_csv(csv_path)
-
 
     def _check_input(self) -> None:
         """Raises exception if input lacks required data"""
@@ -403,7 +385,6 @@ class Comparer:
             raise Exception('Original sample data not provided')
         if sum(self.comparable) < 2:
             raise Exception('At least 2 samples including original required')
-
 
     def merge_dataframes(self) -> pd.DataFrame:
         """Merges 2 or 3 dataframes into one in case of multiple tables"""
@@ -429,31 +410,28 @@ class Comparer:
                 *self.imported_dfs,
                 left_index=True,
                 right_index=True
-                )
+            )
         elif len(self.imported_dfs) == 3:
             return pd.merge(self.imported_dfs[0],
                             self.imported_dfs[1],
                             left_index=True,
                             right_index=True
-                ).merge(self.imported_dfs[2],
-                        left_index=True,
-                        right_index=True)
-
+                            ).merge(self.imported_dfs[2],
+                                    left_index=True,
+                                    right_index=True)
 
     @staticmethod
     def is_single_ended(dataframe: pd.DataFrame) -> bool:
         first_row_values = dataframe.iloc[0].values[-1]
         return not isinstance(first_row_values, str)
 
-
     @staticmethod
     def get_current_memory_usage(in_gigabytes=True) -> float:
         """Checks the amount of RAM used by the script at the time"""
         process = psutil.Process(os.getpid())
-        usage = process.memory_info().rss # in bytes
-        usage_GB = usage * 9.31 * 10 ** (-10) # in Gigabytes
+        usage = process.memory_info().rss  # in bytes
+        usage_GB = usage * 9.31 * 10 ** (-10)  # in Gigabytes
         return round(usage_GB, 3) if in_gigabytes else usage
-
 
     def get_labels(self) -> list:
         labels = [self.original_data.label]
@@ -463,7 +441,6 @@ class Comparer:
             labels.append(self.shuffled_data.label)
         return labels
 
-
     def count_total_reads(self, df: pd.DataFrame):
         """Counts total number of reads for the unfiltered raw dataframe,
         writes the first row to the csv"""
@@ -471,6 +448,7 @@ class Comparer:
         if sum(self.comparable) == 2:
             total_reads_type1 = self.imported_dfs[0].shape[0]
             total_reads_type2 = self.imported_dfs[1].shape[0]
+
             self.write_row(feature='BAM_reads_type1',
                            reads=total_reads_type1,
                            total_reads=total_reads_type1)
@@ -478,8 +456,8 @@ class Comparer:
                            reads=total_reads_type2,
                            total_reads=total_reads_type2)
         self.write_row(feature='Common_reads',
-                        reads=total_reads,
-                        total_reads=total_reads)
+                       reads=total_reads,
+                       total_reads=total_reads)
 
     def extract_mapped(self, df: pd.DataFrame) -> pd.DataFrame:
         """Removes those reads which were mapped neither with original
@@ -500,18 +478,25 @@ class Comparer:
             self.write_row(feature=f'Mapped_reads_type1',
                            reads=df_mapped_g.shape[0],
                            total_reads=df.shape[0])
+
             df_mapped_rep = df2.loc[~df2[f'{l2}_pos'].isin(val)]
             self.write_row(feature=f'Mapped_reads_type2',
                            reads=df_mapped_rep.shape[0],
                            total_reads=df.shape[0])
+
+            df_common = df_mapped_g.loc[df_mapped_g.index.isin(df_mapped_rep.index)]
+
             self.imported_dfs = [df_mapped_g, df_mapped_rep]
             df_mapped = df.loc[
                 (~df[f'{l1}_pos'].isin(val)) |
                 (~df[f'{l2}_pos'].isin(val))
                 ]
             self.write_row(feature=f'Common_mapped_reads',
-                           reads=df_mapped.shape[0],
+                           reads=df_common.shape[0],
                            total_reads=df.shape[0])
+            df_common = pd.merge(df_mapped_g, df_mapped_rep, left_index=True, right_index=True)
+            # print('jj: ', joined_df)
+
         elif sum(self.comparable) == 3:
             l1, l2, l3 = self.get_labels()
             df_mapped = df.loc[
@@ -522,8 +507,8 @@ class Comparer:
             self.write_row(feature=f'Mapped_reads',
                            reads=df_mapped.shape[0],
                            total_reads=df.shape[0])
-        return df_mapped
 
+        return df_mapped, df_common
 
     def remove_inconsistent(self, df: pd.DataFrame) -> pd.DataFrame:
         """Counts reads belonging to Inconsistent type 1 and 2, writes
@@ -589,7 +574,6 @@ class Comparer:
                 ]
         return df_only_mapped
 
-
     def count_unamiguous(self, df: pd.DataFrame):
         """Counts nubmer of unamiguous reads for every sample separetely,
         writes two or three output rows to the csv"""
@@ -616,8 +600,7 @@ class Comparer:
             v3 = df.loc[df[f'{l3}_multi'].isin(val)].shape[0]
             self.write_row('Unambiguous_type3', v3, df.shape[0])
 
-
-    def extract_unambiguous(self, df: pd.DataFrame) -> pd.DataFrame:
+    def extract_unambiguous(self, df_m: pd.DataFrame, df_c: pd.DataFrame) -> pd.DataFrame:
         """Returns dataframe with only common unambiguous reads,
         writes output row to the csv"""
         # allowed values for '_multi' flag
@@ -628,23 +611,29 @@ class Comparer:
 
         if sum(self.comparable) == 2:
             l1, l2 = self.get_labels()
-            df_unambiguous = df.loc[
-                df[f'{l1}_multi'].isin(val) &
-                df[f'{l2}_multi'].isin(val)
+            df_unambiguous = df_m.loc[
+                df_m[f'{l1}_multi'].isin(val) &
+                df_m[f'{l2}_multi'].isin(val)
                 ]
-        elif sum(self.comparable) == 3:
-            l1, l2, l3 = self.get_labels()
-            df_unambiguous = df.loc[
-                df[f'{l1}_multi'].isin(val) &
-                df[f'{l2}_multi'].isin(val) &
-                df[f'{l3}_multi'].isin(val)
-                ]
-        self.write_row(feature='Common_unambiguous',
-                       reads=df_unambiguous.shape[0],
-                       total_reads=df.shape[0])
-        self.df_unambiguous = df_unambiguous
-        return df_unambiguous
 
+            df_common_unambiguous = df_c.loc[
+                df_c[f'{l1}_multi'].isin(val) &
+                df_c[f'{l2}_multi'].isin(val)
+                ]
+
+        # elif sum(self.comparable) == 3:
+        #     l1, l2, l3 = self.get_labels()
+        #     df_unambiguous = df.loc[
+        #         df[f'{l1}_multi'].isin(val) &
+        #         df[f'{l2}_multi'].isin(val) &
+        #         df[f'{l3}_multi'].isin(val)
+        #         ]
+        self.write_row(feature='Common_unambiguous',
+                       reads=df_common_unambiguous.shape[0],
+                       total_reads=df_m.shape[0])
+        self.df_common_unambiguous = df_common_unambiguous
+        self.df_unambiguous = df_unambiguous
+        return [df_unambiguous, df_common_unambiguous]
 
     def count_identical(self, df: pd.DataFrame):
         """Counts identical reads by position and edit distance,
@@ -653,25 +642,27 @@ class Comparer:
             l1, l2 = self.get_labels()
             df_identical = df.loc[
                 (df[f'{l1}_pos'] ==
-                df[f'{l2}_pos']) &
+                 df[f'{l2}_pos']) &
                 (df[f'{l1}_edit_dist'] ==
-                df[f'{l2}_edit_dist'])
+                 df[f'{l2}_edit_dist'])
                 ]
             self.write_row(feature='Identical',
                            reads=df_identical.shape[0],
-                           total_reads=self.df_unambiguous.shape[0])
+                           total_reads=self.df_common_unambiguous.shape[0])
+
+
 
         elif sum(self.comparable) == 3:
             l1, l2, l3 = self.get_labels()
             df_identical = df.loc[
                 (df[f'{l1}_pos'] ==
-                df[f'{l2}_pos']) &
+                 df[f'{l2}_pos']) &
                 (df[f'{l2}_pos'] ==
-                df[f'{l3}_pos']) &
+                 df[f'{l3}_pos']) &
                 (df[f'{l1}_edit_dist'] ==
-                df[f'{l2}_edit_dist']) &
+                 df[f'{l2}_edit_dist']) &
                 (df[f'{l2}_edit_dist'] ==
-                df[f'{l3}_edit_dist'])
+                 df[f'{l3}_edit_dist'])
                 ]
             self.write_row(feature='Identical_among_all_three',
                            reads=df_identical.shape[0],
@@ -680,13 +671,13 @@ class Comparer:
             def count_identical_between(label1: str, label2: str):
                 df_identical = df.loc[
                     (df[f'{label1}_pos'] ==
-                    df[f'{label2}_pos']) &
+                     df[f'{label2}_pos']) &
                     (df[f'{label1}_edit_dist'] ==
-                    df[f'{label2}_edit_dist'])
+                     df[f'{label2}_edit_dist'])
                     ]
                 self.write_row(feature=f'Identical_{label1}_AND_{label2}',
-                            reads=df_identical.shape[0],
-                            total_reads=self.df_unambiguous.shape[0])
+                               reads=df_identical.shape[0],
+                               total_reads=self.df_unambiguous.shape[0])
 
             count_identical_between(l1, l2)
             count_identical_between(l1, l3)
@@ -694,7 +685,6 @@ class Comparer:
 
         if any(x in self.reads_to_extract for x in ["all", "ID"]):
             self.save_to_csv(df_identical, "ID")
-
 
     def count_CG_IL(self, df: pd.DataFrame):
         """Counts reads with consistent global and inconsistent local
@@ -704,22 +694,23 @@ class Comparer:
             l1, l2 = self.get_labels()
             df_CG_IL = df.loc[
                 (df[f'{l1}_pos'] ==
-                df[f'{l2}_pos']) &
+                 df[f'{l2}_pos']) &
                 (df[f'{l1}_edit_dist'] !=
-                df[f'{l2}_edit_dist'])
+                 df[f'{l2}_edit_dist'])
                 ]
             self.write_row(feature='Consistent_global_inconsistent_local',
                            reads=df_CG_IL.shape[0],
-                           total_reads=self.df_unambiguous.shape[0])
+                           total_reads=self.df_common_unambiguous.shape[0])
+
         elif sum(self.comparable) == 3:
             l1, l2, l3 = self.get_labels()
 
             def count_CG_IL_between(label1: str, label2: str):
                 df_CG_IL = df.loc[
                     (df[f'{label1}_pos'] ==
-                    df[f'{label2}_pos']) &
+                     df[f'{label2}_pos']) &
                     (df[f'{label1}_edit_dist'] !=
-                    df[f'{label2}_edit_dist'])
+                     df[f'{label2}_edit_dist'])
                     ]
                 self.write_row(feature=f'CG_IL_{label1}_AND_{label2}',
                                reads=df_CG_IL.shape[0],
@@ -732,7 +723,6 @@ class Comparer:
         if any(x in self.reads_to_extract for x in ["all", "CG_IL"]):
             self.save_to_csv(df_CG_IL, "CG_IL")
 
-
     def count_IG(self, df: pd.DataFrame):
         """Counts reads with inconsistent global alignment (common
         unambiguous reads mapped to the different position with
@@ -741,22 +731,24 @@ class Comparer:
             l1, l2 = self.get_labels()
             df_IG = df.loc[
                 (df[f'{l1}_pos'] !=
-                df[f'{l2}_pos']) &
+                 df[f'{l2}_pos']) &
                 (df[f'{l1}_edit_dist'] !=
-                df[f'{l2}_edit_dist'])
+                 df[f'{l2}_edit_dist'])
                 ]
             self.write_row(feature='Inconsistent_global',
                            reads=df_IG.shape[0],
-                           total_reads=self.df_unambiguous.shape[0])
+                           total_reads=self.df_common_unambiguous.shape[0])
+
+
         elif sum(self.comparable) == 3:
             l1, l2, l3 = self.get_labels()
 
             def count_IG_between(label1: str, label2: str):
                 df_IG = df.loc[
                     (df[f'{label1}_pos'] !=
-                    df[f'{label2}_pos']) &
+                     df[f'{label2}_pos']) &
                     (df[f'{label1}_edit_dist'] !=
-                    df[f'{label2}_edit_dist'])
+                     df[f'{label2}_edit_dist'])
                     ]
                 self.write_row(feature=f'IG_{label1}_AND_{label2}',
                                reads=df_IG.shape[0],
@@ -769,7 +761,6 @@ class Comparer:
         if any(x in self.reads_to_extract for x in ["all", "IG"]):
             self.save_to_csv(df_IG, "IG")
 
-
     def count_MM(self, df: pd.DataFrame):
         """Counts multi-mapped reads (common unambiguous reads mapped
         to different positions with the same edit distance),
@@ -778,25 +769,26 @@ class Comparer:
             l1, l2 = self.get_labels()
             df_MM = df.loc[
                 (df[f'{l1}_pos'] !=
-                df[f'{l2}_pos']) &
+                 df[f'{l2}_pos']) &
                 (df[f'{l1}_edit_dist'] ==
-                df[f'{l2}_edit_dist'])
+                 df[f'{l2}_edit_dist'])
                 ]
             self.write_row(feature='Hidden_Multi_mapped',
                            reads=df_MM.shape[0],
-                           total_reads=self.df_unambiguous.shape[0])
+                           total_reads=self.df_common_unambiguous.shape[0])
+
         elif sum(self.comparable) == 3:
             l1, l2, l3 = self.get_labels()
 
             def count_MM_between(label1: str, label2: str):
                 df_MM = df.loc[
                     (df[f'{label1}_pos'] !=
-                    df[f'{label2}_pos']) &
+                     df[f'{label2}_pos']) &
                     (df[f'{label1}_edit_dist'] ==
-                    df[f'{label2}_edit_dist'])
+                     df[f'{label2}_edit_dist'])
                     ]
-                self.write_row(feature='Hidden_Multi_mapped_'+
-                               f'{label1}_AND_{label2}',
+                self.write_row(feature='Hidden_Multi_mapped_' +
+                                       f'{label1}_AND_{label2}',
                                reads=df_MM.shape[0],
                                total_reads=self.df_unambiguous.shape[0])
 
@@ -807,7 +799,6 @@ class Comparer:
         if any(x in self.reads_to_extract for x in ["all", "MM"]):
             self.save_to_csv(df_MM, "MM")
 
-
     def compare(self):
         # 1. Merging dataframes from different csv if needed
         df = self.merge_dataframes()
@@ -816,10 +807,10 @@ class Comparer:
         self.count_total_reads(df)
         # 3. Removing reads which were mapped neither with original
         #    nor replicated data
-        df_mapped = self.extract_mapped(df)
+        df_mapped, df_common = self.extract_mapped(df)
         # 4. Counting unambiguous reads and creating dataframe with them
-        self.count_unamiguous(df_mapped)
-        df_unambiguous = self.extract_unambiguous(df_mapped)
+        # self.count_unamiguous(df_mapped)
+        df_unambiguous, df_common_unambiguous = self.extract_unambiguous(df_mapped, df_common)
         # 5. Counting inconsistent type 1 and 2
         df_without_IT1_IT2 = self.remove_inconsistent(df_unambiguous)
         # 6. Counting other features among filtered reads
@@ -833,57 +824,59 @@ class Comparer:
 
 
 app = typer.Typer(add_completion=False)
+
+
 @app.command()
 def main(input_csvs: List[Path] = typer.Argument(
-            ...,
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
-            show_default=False,
-            help="List of CSV files to compare; min: 2 files"
-            ),
-         output_path: Path = typer.Option(
+    ...,
+    exists=True,
+    file_okay=True,
+    dir_okay=False,
+    readable=True,
+    show_default=False,
+    help="List of CSV files to compare; min: 2 files"
+),
+        output_path: Path = typer.Option(
             "./comparer_output.csv",
             "--output",
             "-o",
             help="Path to output directory or file."
-            ),
-         reads_to_extract: Optional[List[str]] = typer.Option(
+        ),
+        reads_to_extract: Optional[List[str]] = typer.Option(
             [],
             "--extract",
             "-x",
             help="Extract specific type of common reads"
-            ),
-         filtered_columns: Optional[List[str]] = typer.Option(
+        ),
+        filtered_columns: Optional[List[str]] = typer.Option(
             CSV.all_columns,
             "--filter",
             "-f",
             help="Filter columns for extraction of specific read types"
-            )
+        )
 
-            ):
+):
     """
     Subsampling and comparing tool for parsed CSV files.
 
     """
     read_types_notation = {
-        "all":  "Extract every read type listed below "
-                "to an individual file.",
-        "ID":   "Identical. Common reads identical by "
-                "position and edit distance.",
-        "CG_IL":"Consistent Global and Inconsistent Local. "
-                "Common unambiguous reads mapped to the same "
-                "position with different edit distance.",
-        "IT1":  "Inconsistent Type 1. Common unambiguous reads "
-                "mapped only with original data (Type 1).",
-        "IT2":  "Inconsistent Type 1. Common unambiguous reads "
-                "only with replicated data (Type 2).",
-        "IG":   "Inconsistent Global. Common unambiguous reads "
-                "mapped to the different position with "
-                "different edit distance.",
-        "MM":   "Hidden 'Multi-Mapped'. Common unambiguous reads mapped "
-                "to different positions with the same edit distance."
+        "all": "Extract every read type listed below "
+               "to an individual file.",
+        "ID": "Identical. Common reads identical by "
+              "position and edit distance.",
+        "CG_IL": "Consistent Global and Inconsistent Local. "
+                 "Common unambiguous reads mapped to the same "
+                 "position with different edit distance.",
+        "IT1": "Inconsistent Type 1. Common unambiguous reads "
+               "mapped only with original data (Type 1).",
+        "IT2": "Inconsistent Type 1. Common unambiguous reads "
+               "only with replicated data (Type 2).",
+        "IG": "Inconsistent Global. Common unambiguous reads "
+              "mapped to the different position with "
+              "different edit distance.",
+        "MM": "Hidden 'Multi-Mapped'. Common unambiguous reads mapped "
+              "to different positions with the same edit distance."
     }
 
     column_names_notation = {
@@ -902,8 +895,8 @@ def main(input_csvs: List[Path] = typer.Argument(
         if read_type not in read_types_notation.keys():
             print("INCORRECT INPUT. No such read type:", read_type)
             print("Only the following types of reads",
-                    "are available for extraction:",
-                    ", ".join(read_types_notation.keys()), "\n")
+                  "are available for extraction:",
+                  ", ".join(read_types_notation.keys()), "\n")
             for _type, description in read_types_notation.items():
                 print(f"{_type}: \t{description}")
             print()
@@ -914,8 +907,8 @@ def main(input_csvs: List[Path] = typer.Argument(
         if column not in column_names_notation.keys():
             print("INCORRECT INPUT. No such column name:", column)
             print("Only the following column names",
-                    "are available for filtering:",
-                    ", ".join(column_names_notation.keys()), "\n")
+                  "are available for filtering:",
+                  ", ".join(column_names_notation.keys()), "\n")
             for _type, description in column_names_notation.items():
                 print(f"{_type}: \t{description}")
             print()
@@ -931,26 +924,26 @@ def main(input_csvs: List[Path] = typer.Argument(
 
     input_data = {
         'original': {
-                        'label': csvs[0].label,
-                        'path_to_csv': str(paths[0])
-                    },
+            'label': csvs[0].label,
+            'path_to_csv': str(paths[0])
+        },
 
         'reversed': {
-                        'label': csvs[1].label,
-                        'path_to_csv': str(paths[1])
-                    },
+            'label': csvs[1].label,
+            'path_to_csv': str(paths[1])
+        },
 
         'shuffled': {
-                        'label': '',
-                        'path_to_csv': ''
-                    },
+            'label': '',
+            'path_to_csv': ''
+        },
     }
 
     if len(csvs) > 2:
         input_data['shuffled'] = {
-                        'label': csvs[2].label,
-                        'path_to_csv': str(paths[2])
-                    }
+            'label': csvs[2].label,
+            'path_to_csv': str(paths[2])
+        }
 
     comparer = Comparer(input_data,
                         output_path=str(output_path),
