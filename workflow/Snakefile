@@ -1,24 +1,41 @@
 
 import logging
 import glob
+import math
+
 
 LOGGER = logging.getLogger("snakemake.logging")
 
 if not "REPROFLOW_BASEDIR" in dir():
     # NOTE when used from a module workflow.basedir (and main_snakefile) always point to most-outer wrapping layer, workflow.current_basedir (and snakefile) to the current module
     REPROFLOW_BASEDIR = workflow.current_basedir
+    print(REPROFLOW_BASEDIR)
 LOGGER.info("REPROFLOW_BASEDIR = %s", REPROFLOW_BASEDIR)
 
 # include: "rules/create_replicates.smk"
 
-configfile: "../config/config.yaml"
+#configfile: "../config/config.yaml"
+
+if os.path.exists("config/config.yaml"):
+    configfile: "config/config.yaml"
+
+elif os.path.exists("config.yaml"):
+
+    configfile: "config.yaml"
 
 SAMPLES = ["test_g"]
 
+def _limit_number_of_replicates(info) -> int:
+    number = min(
+        config["replicate"]["replicate_number"],
+        math.factorial(config['replicate']['record_len']) - 1
+    )
+    return number
 
 def fastq_file_names(wildcards):
     rep_type = config["replicate"]["replicate_type"]
-    n = config["replicate"]["replicate_number"]
+    n = _limit_number_of_replicates(config["replicate"]["replicate_number"])
+    print('>>>>>>>n :', n)
     out_folder = config["replicate"]["output_folder"]
 
     files = []
@@ -79,7 +96,7 @@ checkpoint create_replicates:
         rep_num=config["replicate"]["replicate_number"],
         pair_type=config["replicate"]["pair_type"],
     conda:
-        f"{REPROFLOW_BASEDIR}/envs/replicate.yaml"
+        "envs/replicate.yaml"
 
     shell:
         """
