@@ -137,3 +137,5 @@ temp.py
 config.yaml
 rf.py
 bam_comp/count_fastq.py
+bam_comp/ERR.fastq
+bam_comp/SRR27806201.fastq

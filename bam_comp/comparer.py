@@ -62,6 +62,7 @@ from csvsort import csvsort
 import typer
 import csv
 from itertools import combinations
+from count_fastq import read_csv, count_reads
 
 
 class CSV:
@@ -310,10 +311,13 @@ class Comparer:
     """
 
     def __init__(self, input_data: dict,
+                 fastq_reads: int,
                  output_path: str = '',
                  reads_to_extract: list = [],
-                 filtered_columns: list = []) -> None:
+                 filtered_columns: list = []
+                 ) -> None:
         self.input_data = input_data
+        self.fastq_reads = fastq_reads
         self.output_path = self._parse_output_path(output_path)
         self.reads_to_extract = reads_to_extract
         self.filtered_columns = filtered_columns
@@ -449,15 +453,18 @@ class Comparer:
             total_reads_type1 = self.imported_dfs[0].shape[0]
             total_reads_type2 = self.imported_dfs[1].shape[0]
 
+            self.write_row(feature='FASTQ_reads',
+                           reads=self.fastq_reads,
+                           total_reads=self.fastq_reads)
             self.write_row(feature='BAM_reads_type1',
                            reads=total_reads_type1,
-                           total_reads=total_reads_type1)
+                           total_reads=self.fastq_reads)
             self.write_row(feature='BAM_reads_type2',
                            reads=total_reads_type2,
-                           total_reads=total_reads_type2)
+                           total_reads=self.fastq_reads)
         self.write_row(feature='Common_reads',
                        reads=total_reads,
-                       total_reads=total_reads)
+                       total_reads=self.fastq_reads)
 
     def extract_mapped(self, df: pd.DataFrame) -> pd.DataFrame:
         """Removes those reads which were mapped neither with original
@@ -477,12 +484,12 @@ class Comparer:
             df_mapped_g = df1.loc[~df1[f'{l1}_pos'].isin(val)]
             self.write_row(feature=f'Mapped_reads_type1',
                            reads=df_mapped_g.shape[0],
-                           total_reads=df.shape[0])
+                           total_reads=self.fastq_reads)
 
             df_mapped_rep = df2.loc[~df2[f'{l2}_pos'].isin(val)]
             self.write_row(feature=f'Mapped_reads_type2',
                            reads=df_mapped_rep.shape[0],
-                           total_reads=df.shape[0])
+                           total_reads=self.fastq_reads)
 
             df_common = df_mapped_g.loc[df_mapped_g.index.isin(df_mapped_rep.index)]
 
@@ -493,7 +500,7 @@ class Comparer:
                 ]
             self.write_row(feature=f'Common_mapped_reads',
                            reads=df_common.shape[0],
-                           total_reads=df.shape[0])
+                           total_reads=self.fastq_reads)
             df_common = pd.merge(df_mapped_g, df_mapped_rep, left_index=True, right_index=True)
             # print('jj: ', joined_df)
 
@@ -506,7 +513,7 @@ class Comparer:
                 ]
             self.write_row(feature=f'Mapped_reads',
                            reads=df_mapped.shape[0],
-                           total_reads=df.shape[0])
+                           total_reads=self.fastq_reads)
 
         return df_mapped, df_common
 
@@ -588,17 +595,17 @@ class Comparer:
 
         l1 = self.original_data.label
         v1 = df1.loc[df1[f'{l1}_multi'].isin(val)].shape[0]
-        self.write_row('Unambiguous_type1', v1, df.shape[0])
+        self.write_row('Unambiguous_type1', v1, self.fastq_reads)
 
         if self.reversed_data.is_comparable:
             l2 = self.reversed_data.label
             v2 = df2.loc[df2[f'{l2}_multi'].isin(val)].shape[0]
-            self.write_row('Unambiguous_type2', v2, df.shape[0])
+            self.write_row('Unambiguous_type2', v2, self.fastq_reads)
 
         if self.shuffled_data.is_comparable:
             l3 = self.shuffled_data.label
             v3 = df.loc[df[f'{l3}_multi'].isin(val)].shape[0]
-            self.write_row('Unambiguous_type3', v3, df.shape[0])
+            self.write_row('Unambiguous_type3', v3, self.fastq_reads)
 
     def extract_unambiguous(self, df_m: pd.DataFrame, df_c: pd.DataFrame) -> pd.DataFrame:
         """Returns dataframe with only common unambiguous reads,
@@ -630,7 +637,7 @@ class Comparer:
         #         ]
         self.write_row(feature='Common_unambiguous',
                        reads=df_common_unambiguous.shape[0],
-                       total_reads=df_m.shape[0])
+                       total_reads=self.fastq_reads)
         self.df_common_unambiguous = df_common_unambiguous
         self.df_unambiguous = df_unambiguous
         return [df_unambiguous, df_common_unambiguous]
@@ -649,7 +656,6 @@ class Comparer:
             self.write_row(feature='Identical',
                            reads=df_identical.shape[0],
                            total_reads=self.df_common_unambiguous.shape[0])
-
 
 
         elif sum(self.comparable) == 3:
@@ -812,7 +818,7 @@ class Comparer:
         # self.count_unamiguous(df_mapped)
         df_unambiguous, df_common_unambiguous = self.extract_unambiguous(df_mapped, df_common)
         # 5. Counting inconsistent type 1 and 2
-        df_without_IT1_IT2 = self.remove_inconsistent(df_unambiguous)
+        df_without_IT1_IT2 = self.remove_inconsistent(df_common_unambiguous)
         # 6. Counting other features among filtered reads
         self.count_identical(df_without_IT1_IT2)
         self.count_CG_IL(df_without_IT1_IT2)
@@ -835,6 +841,15 @@ def main(input_csvs: List[Path] = typer.Argument(
     readable=True,
     show_default=False,
     help="List of CSV files to compare; min: 2 files"
+),
+    fastq_file: Path = typer.Argument(
+    ...,
+    exists=True,
+    file_okay=True,
+    dir_okay=False,
+    readable=True,
+    show_default=False,
+    help="Path to FASTQ File of the sample"
 ),
         output_path: Path = typer.Option(
             "./comparer_output.csv",
@@ -914,6 +929,8 @@ def main(input_csvs: List[Path] = typer.Argument(
             print()
             raise typer.Abort()
 
+    fastq_reads = count_reads(fastq_file)
+
     csvs = [CSV(str(input_csv)) for input_csv in input_csvs]
     paths = input_csvs
 
@@ -948,7 +965,8 @@ def main(input_csvs: List[Path] = typer.Argument(
     comparer = Comparer(input_data,
                         output_path=str(output_path),
                         reads_to_extract=reads_to_extract,
-                        filtered_columns=filtered_columns)
+                        filtered_columns=filtered_columns,
+                        fastq_reads=fastq_reads)
     comparer.compare()
 
 
