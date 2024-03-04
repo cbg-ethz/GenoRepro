@@ -44,7 +44,7 @@
 #                       | to different positions            |   Common_unambiguous   |
 #                       | with different edit distance      |                        |
 #   ----------------------------------------------------------------------------------
-#   Hidden_Multi_mapped | Common unambiguous reads mapped   |          from          |
+#   Hidden_multi_mapped | Common unambiguous reads mapped   |          from          |
 #                       | to different positions            |   Common_unambiguous   |
 #                       | with the same edit distance       |                        |
 #   ----------------------------------------------------------------------------------
@@ -428,6 +428,10 @@ class Comparer:
     def is_single_ended(dataframe: pd.DataFrame) -> bool:
         first_row_values = dataframe.iloc[0].values[-1]
         return not isinstance(first_row_values, str)
+    
+    def contains_multimapped(self, dataframe: pd.DataFrame) -> bool:
+        val = '0' if self.is_single_ended(dataframe) else '[0, 0]'
+        return not (dataframe.to_numpy().swapaxes(0,1)[-1] == val).all(0)
 
     @staticmethod
     def get_current_memory_usage(in_gigabytes=True) -> float:
@@ -498,9 +502,9 @@ class Comparer:
                 (~df[f'{l1}_pos'].isin(val)) |
                 (~df[f'{l2}_pos'].isin(val))
                 ]
-            self.write_row(feature=f'Common_mapped_reads',
-                           reads=df_common.shape[0],
-                           total_reads=self.fastq_reads)
+            # self.write_row(feature=f'Common_mapped_reads',
+            #                reads=df_common.shape[0],
+            #                total_reads=self.fastq_reads)
             df_common = pd.merge(df_mapped_g, df_mapped_rep, left_index=True, right_index=True)
             # print('jj: ', joined_df)
 
@@ -538,9 +542,9 @@ class Comparer:
             if triple_wise:
                 sorted_labels = sorted([label1, label2])
                 feature += f'_{sorted_labels[0]}_AND_{sorted_labels[1]}'
-            self.write_row(feature=feature,
-                           reads=df_IT.shape[0],
-                           total_reads=df.shape[0])
+            # self.write_row(feature=feature,
+            #                reads=df_IT.shape[0],
+            #                total_reads=df.shape[0])
             return df_IT
 
         if sum(self.comparable) == 2:
@@ -779,7 +783,7 @@ class Comparer:
                 (df[f'{l1}_edit_dist'] ==
                  df[f'{l2}_edit_dist'])
                 ]
-            self.write_row(feature='Hidden_Multi_mapped',
+            self.write_row(feature='Hidden_multi_mapped',
                            reads=df_MM.shape[0],
                            total_reads=self.df_common_unambiguous.shape[0])
 
@@ -793,7 +797,7 @@ class Comparer:
                     (df[f'{label1}_edit_dist'] ==
                      df[f'{label2}_edit_dist'])
                     ]
-                self.write_row(feature='Hidden_Multi_mapped_' +
+                self.write_row(feature='Hidden_multi_mapped_' +
                                        f'{label1}_AND_{label2}',
                                reads=df_MM.shape[0],
                                total_reads=self.df_unambiguous.shape[0])
