@@ -341,12 +341,22 @@ class Comparer:
             Number of unfiltered reads to calculate the percentage
             (almost always number of unambiguous reads)
         """
+        if total_reads == 0:
+            percentage = 0
+        else:
+            percentage = round(100 * reads / total_reads, 3)
+        row = {
+            "FEATURE": feature,
+            "READS": reads,
+            "PERCENTAGE": percentage
+        }
+
         with open(self.output_path, 'a') as f:
             header = ['FEATURE', 'READS', 'PERCENTAGE']
             row = {
                 "FEATURE": feature,
                 "READS": reads,
-                "PERCENTAGE": round(100 * reads / total_reads, 3)
+                "PERCENTAGE": percentage
             }
             dictwriter_object = csv.DictWriter(f, header)
             dictwriter_object.writerow(row)
@@ -428,7 +438,7 @@ class Comparer:
     def is_single_ended(dataframe: pd.DataFrame) -> bool:
         first_row_values = dataframe.iloc[0].values[-1]
         return not isinstance(first_row_values, str)
-    
+
     def contains_multimapped(self, dataframe: pd.DataFrame) -> bool:
         val = '0' if self.is_single_ended(dataframe) else '[0, 0]'
         return not (dataframe.to_numpy().swapaxes(0,1)[-1] == val).all(0)
