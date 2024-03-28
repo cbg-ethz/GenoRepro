@@ -1,11 +1,26 @@
 replicate:
+  samples: ""
   input_folder: "../work/samples/"
-  output_folder: "../work/results/"
+  output_folder: "../work/replicates/"
   seed: 1
-  replicate_number: 5
-  replicate_type: "rc"
+  replicate_number: 2 #TODO change it a way that entering a value more than limit doesn't trigger rule if max files exist already
+  replicate_type: "sh"
   pair_type: "paired"
+  record_len: 3 #TODO add script to parse this information
+  max_permut: 6
 
 alignment:
-  index:
-  align:
+  selected_tools: ["bwa2", "bowtie2"]
+  output_folder: "../work/bam_out/"
+  genome: "../resources/index/"
+  envs:
+    bwa2: "../envs/bwa2.yaml"
+    bowtie2: "../envs/bowtie2.yaml"
+  # commands:
+  #   bwa2: "scripts/bwa2_align.sh"
+  #   bowtie2: "scripts/bowtie2_align.sh"
+
+
+assessment:
+  parser_out: "../work/parser_out/"
+  comparer_out: "../work/comparer_out/"
