@@ -3,7 +3,5 @@ channels:
   - bioconda
   - defaults
 dependencies:
-  - chardet=4.0.0
-  - numpy=1.23.4
   - typer=0.6.1
   - biopython=1.79

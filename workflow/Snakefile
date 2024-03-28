@@ -1,6 +1,8 @@
 import logging
 import glob
 import math
+import os
+from snakemake.io import expand, glob_wildcards
 
 
 LOGGER = logging.getLogger("snakemake.logging")
@@ -11,20 +13,8 @@ if not "REPROFLOW_BASEDIR" in dir():
     # print(REPROFLOW_BASEDIR)
 LOGGER.info("REPROFLOW_BASEDIR = %s", REPROFLOW_BASEDIR)
 
-# include: "rules/create_replicates.smk"
-
 
 configfile: "../config/config.yaml"
-
-selected_tools = config['alignment']['selected_tools']  # Assuming this is a list of tool names
-
-
-if 'bwa2' in selected_tools:
-    include: "rules/bwa2.smk"
-
-if 'bowtie2' in selected_tools:
-    include: "rules/bowtie2.smk"
-
 
 # if os.path.exists("config/config.yaml"):
 #
@@ -34,136 +24,183 @@ if 'bowtie2' in selected_tools:
 #
 #     configfile: "config.yaml"
 
-SAMPLES = ["test_g"]
-# nums = [1]
+
+include: "rules/process_fastq.smk"
 
 
+if config["replicate"]["pair_type"] == "single":
+
+    include: "rules/create_replicates_single.smk"
+
+elif config["replicate"]["pair_type"] == "paired":
+
+    include: "rules/create_replicates_paired.smk"
+
+
+selected_tools = config["alignment"]["selected_tools"]
+
+if "bwa2" in selected_tools:
+
+    include: "rules/bwa2.smk"
+
+
+if "bowtie2" in selected_tools:
+
+    include: "rules/bowtie2.smk"
+
+
+include: "rules/parser.smk"
+include: "rules/comparer.smk"
+
+
+SAMPLES = ["ERR009308"]
+TOOLS = selected_tools
+# print(SAMPLES, TOOLS)
+
+
+############### HELPER FUNCTIONS #################
 def _limit_number_of_replicates(info) -> int:
     number = min(
         config["replicate"]["replicate_number"],
-        math.factorial(config["replicate"]["record_len"]) - 1,
+        math.factorial(info) - 1,
     )
     return number
 
 
-narr = range(1, config["replicate"]["replicate_number"] + 1)
-narr = _limit_number_of_replicates(narr) + 1
+narr = _limit_number_of_replicates(config["replicate"]["record_len"]) + 1
 # print(range(1,narr))
 
 
-import os
-from snakemake.io import expand, glob_wildcards
-
-
-def gather_checkpoint_outputs(wildcards):
-    checkpoint_output = checkpoints.create_replicates.get(**wildcards).output
+def gather_checkpoint_outputs_paired(wildcards):
+    # print(
+    #     "check_out_paired: ",
+    #     checkpoints.create_replicates_paired.get(**wildcards).output[0],
+    #     checkpoints.create_replicates_paired.get(**wildcards).output[1],
+    # )
     return [
-        checkpoints.create_replicates.get(**wildcards).output[0],
-        checkpoints.create_replicates.get(**wildcards).output[1],
+        checkpoints.create_replicates_paired.get(**wildcards).output[0],
+        checkpoints.create_replicates_paired.get(**wildcards).output[1],
     ]
 
 
-all_input = []
-# Precompute inputs for the all rule based on replicate type
-for tool in config["alignment"]["selected_tools"]:
-    if config["replicate"]["replicate_type"] == "sh":
-        all_input += expand(
-            config["assessment"]["parser_out"] + "{tool}/{sample}_sh{n}.csv",
-            sample=SAMPLES,
-            n=range(1, narr),
-            tool=tool,
-        )
+def gather_checkpoint_outputs_single(wildcards):
+    # print(
+    #     "check_out_single: ",
+    #     checkpoints.create_replicates_single.get(**wildcards).output[0],
+    # )
+    return checkpoints.create_replicates_single.get(**wildcards).output[0]
 
-    elif config["replicate"]["replicate_type"] == "rc":
-        all_input += expand(
-            config["assessment"]["parser_out"] + "{tool}/{sample}_rc.csv",
-            sample=SAMPLES,
-            tool=tool,
-        )
 
-    all_input += expand(
-        config["assessment"]["parser_out"] + "{tool}/{sample}_original.csv",
-        sample=SAMPLES,
-        tool=tool,
+# Define a function to return the appropriate list of input files based on the condition
+ext = ".csv"
+out_folder = config["assessment"]["comparer_out"]
+
+def get_fastq():
+    return (
+        expand(
+            config["replicate"]["output_folder"]
+            + "{sample}_sh{n}_R1.fastq",
+            sample=SAMPLES,
+            n=range(1,narr)
+        )
+        + expand(
+            config["replicate"]["output_folder"]
+            + "{sample}_sh{n}_R2.fastq",
+            sample=SAMPLES,
+            n=range(1,narr)
+        )
     )
-# print(all_input)
 
+
+def get_inputs():
+    if config["replicate"]["pair_type"] == "single":
+        return (
+
+            # expand(
+            #     out_folder
+            #     + "{tool}/{sample}_sh{n}_{pair}"
+            #     + ext,
+            #     sample=SAMPLES,
+            #     tool=TOOLS,
+            #     n=range(1, narr),
+            #     pair="S",
+            # )
+            # + expand(
+            #     out_folder + "{tool}/{sample}_original_{pair}" + ext,
+            #     sample=SAMPLES,
+            #     tool=TOOLS,
+            #     pair="S",
+            # )
+            expand(
+                out_folder + "{tool}/{sample}_sh{n}-original_{pair}" + ext,
+                sample=SAMPLES,
+                tool=TOOLS,
+                n=range(1, narr),
+                pair="S",
+            )
+
+            + expand(
+                config["replicate"]["output_folder"] + "{sample}_{pair}_info.csv",
+                sample=SAMPLES,
+                pair="S",
+            )
+        )
+
+    else:
+        return (
+            # expand(
+            #     out_folder
+            #     + "{tool}/{sample}_sh{n}_{pair}"
+            #     + ext,
+            #     sample=SAMPLES,
+            #     tool=TOOLS,
+            #     n=range(1, narr),
+            #     pair="R",
+            # )
+            # + expand(
+            #     out_folder + "{tool}/{sample}_original_{pair}" + ext,
+            #     sample=SAMPLES,
+            #     tool=TOOLS,
+            #     pair="R",
+            # )
+            expand(
+                out_folder + "{tool}/{sample}_sh{n}-original_{pair}" + ext,
+                sample=SAMPLES,
+                tool=TOOLS,
+                n=range(1, narr),
+                pair="R",
+            )
+            + expand(
+                config["replicate"]["output_folder"] + "{sample}_{pair}_info.csv",
+                sample=SAMPLES,
+                pair="R",
+            )
+        )
+
+
+# print(get_inputs())
+print(get_fastq())
+
+
+# Use the function in the rule
 rule all:
     input:
-        all_input
-# rule all:
+        get_inputs(),
+
+        # get_fastq(),
+        # config["assessment"]["comparer_out"] + "done.txt"
+        # gather_checkpoint_outputs_paired
+        #all_input
+
+
+################################################################################
+# ruleorder: generate_csv > create
+
+# rule last:
 #     input:
-#         expand(config["alignment"]["output_folder"] + "{tool}/{sample}_original.bam", tool=config["alignment"]["selected_tools"], sample=SAMPLES),
-#         expand(config["alignment"]["output_folder"] + "{tool}/{sample}_replicates.bam", tool=config["alignment"]["selected_tools"], sample=SAMPLES)
-#
-
-
-checkpoint create_replicates:
-    input:
-        input1=config["replicate"]["input_folder"] + "{sample}_1.fastq",
-        input2=config["replicate"]["input_folder"] + "{sample}_2.fastq",
-    output:
-        out1=config["replicate"]["output_folder"] + "{sample}_sh{n}_1.fastq"
-        if config["replicate"]["replicate_type"] == "sh"
-        else config["replicate"]["output_folder"] + "{sample}_rc_1.fastq",
-        out2=config["replicate"]["output_folder"] + "{sample}_sh{n}_2.fastq"
-        if config["replicate"]["replicate_type"] == "sh"
-        else config["replicate"]["output_folder"] + "{sample}_rc_2.fastq",
-    params:
-        out_folder=config["replicate"]["output_folder"],
-        rep_type=config["replicate"]["replicate_type"],
-        rep_num=config["replicate"]["replicate_number"],
-        pair_type=config["replicate"]["pair_type"],
-    conda:
-        "envs/replicate.yaml"
-    shell:
-        """
-        python {REPROFLOW_BASEDIR}/scripts/create_replicates.py \
-            -f1 {input.input1} \
-            -f2 {input.input2} \
-            -r {params.rep_type} \
-            -n {params.rep_num} \
-            -p {params.pair_type} \
-            -o {params.out_folder}
-        """
-
-
-rule parse_bam:
-    input:
-        config["alignment"]["output_folder"] + "{tool}/{sample}_{type}.bam",
-    output:
-        config["assessment"]["parser_out"] + "{tool}/{sample}_{type}.csv",
-    conda:
-        "envs/parser.yaml"
-    shell:
-        """
-        python {REPROFLOW_BASEDIR}/scripts/parser.py {input} -o {output}
-        """
-
-
-
-#
-# genome_path = "../resources/index/"
-# genome_base = "GRCh38.fna"
-#
-# # Function to generate output file paths for indexing
-# def generate_index_files(tool, extension_list):
-#     # print([f"{genome_path}{tool}/{genome_base}{ext}" for ext in extension_list])
-#     return [f"{genome_path}{genome_base}{ext}" for ext in extension_list]
-#
-# # Dynamically create a list of all target output files for rule all
-# all_outputs = []
-# for tool in config["alignment"]["selected_tools"]:
-#     extensions = config["alignment"]["extensions"]
-#     all_outputs.extend(generate_index_files(tool, extensions))
-#     print('all: ', all_outputs)
-
-# Rule all to specify final targets
-# rule all:
-#     input:
-#         all_outputs
-
-# rule all:
-#     input:
-#         expand(config["alignment"]["output_folder"] + "{tool}/{sample}_{tool}_original.bam", tool=config["alignment"]["selected_tools"], sample=SAMPLES),
-#         expand(config["alignment"]["output_folder"] + "{tool}/{sample}_{tool}_replicates.bam", tool=config["alignment"]["selected_tools"], sample=SAMPLES)
+#         expand(config["assessment"]["comparer_out"] + "{tool}/{sample}_{type}-original_{pair}.csv",
+#             tool=TOOLS, sample=SAMPLES, type=["sh1", "sh2", "sh3"], pair="R"),
+#     output:
+#         config["assessment"]["comparer_out"] + "done.txt"
+#     run:
+#         shell("touch {output}")

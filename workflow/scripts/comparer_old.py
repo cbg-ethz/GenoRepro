@@ -64,6 +64,9 @@ import csv
 from itertools import combinations
 
 
+# from count_fastq import read_csv, count_reads
+
+
 class CSV:
     # used for filtering when extracting specific read types
     all_columns = ['flags', 'pos', 'chr', 'CIGAR',
@@ -340,22 +343,12 @@ class Comparer:
             Number of unfiltered reads to calculate the percentage
             (almost always number of unambiguous reads)
         """
-        if total_reads == 0:
-            percentage = 0
-        else:
-            percentage = round(100 * reads / total_reads, 3)
-        row = {
-            "FEATURE": feature,
-            "READS": reads,
-            "PERCENTAGE": percentage
-        }
-
         with open(self.output_path, 'a') as f:
             header = ['FEATURE', 'READS', 'PERCENTAGE']
             row = {
                 "FEATURE": feature,
                 "READS": reads,
-                "PERCENTAGE": percentage
+                "PERCENTAGE": round(100 * reads / total_reads, 3)
             }
             dictwriter_object = csv.DictWriter(f, header)
             dictwriter_object.writerow(row)
@@ -855,13 +848,9 @@ def main(input_csvs: List[Path] = typer.Argument(
     show_default=False,
     help="List of CSV files to compare; min: 2 files"
 ),
-        fastq_reads_csv: Path = typer.Argument(
+        fastq_reads: int = typer.Argument(
             ...,
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
-            help="Path to the CSV file containing the number of FASTQ reads."
+            help="Number of reads in the FASTQ file."
         ),
 
         output_path: Path = typer.Option(
@@ -976,10 +965,7 @@ def main(input_csvs: List[Path] = typer.Argument(
             'path_to_csv': str(paths[2])
         }
 
-
-    # Reading the CSV to get the number of FASTQ reads
-    fastq_reads_df = pd.read_csv(fastq_reads_csv)
-    fastq_reads = int(fastq_reads_df.iloc[0, 1])
+    print(fastq_reads)
 
     comparer = Comparer(input_data,
                         output_path=str(output_path),
