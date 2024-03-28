@@ -345,11 +345,6 @@ class Comparer:
             percentage = 0
         else:
             percentage = round(100 * reads / total_reads, 3)
-        row = {
-            "FEATURE": feature,
-            "READS": reads,
-            "PERCENTAGE": percentage
-        }
 
         with open(self.output_path, 'a') as f:
             header = ['FEATURE', 'READS', 'PERCENTAGE']
