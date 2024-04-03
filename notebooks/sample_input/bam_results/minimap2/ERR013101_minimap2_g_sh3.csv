@@ -1,10 +1,10 @@
 FEATURE,READS,PERCENTAGE
 FASTQ_reads,10640477,100.0
-BAM_reads_type1,10640477,100.0
-BAM_reads_type2,10640477,100.0
-Common_reads,10640477,100.0
-Mapped_reads_type1,10557374,99.219
-Mapped_reads_type2,10557374,99.219
+BAM_reads_type1,10527373,98.937
+BAM_reads_type2,10527373,98.937
+Common_reads,10527373,98.937
+Mapped_reads_type1,10444270,98.156
+Mapped_reads_type2,10444270,98.156
 Common_unambiguous,10444270,98.156
 Identical,10444270,100.0
 Consistent_global_inconsistent_local,0,0.0
