@@ -1,0 +1,16 @@
+#log files
+logs/
+
+#temporary files
+.snakemake/
+.snakemake_lock
+
+#environment files
+.snakemake/conda/
+
+# Conda environments
+.snakemake/conda/
+envs/*.lock
+
+# Python-specific
+__pycache__/
