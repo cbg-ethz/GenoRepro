@@ -1,16 +1,42 @@
-#log files
-logs/
-
-#temporary files
+# Snakemake temporary files
 .snakemake/
-.snakemake_lock
+*.log
+*.html
+*.svg
+*.png
+*.tmp
+*.lock
 
-#environment files
-.snakemake/conda/
+# Snakemake-generated files
+*.dot
+*.rulegraph
+*.dag
 
-# Conda environments
-.snakemake/conda/
-envs/*.lock
+# Jupyter notebooks checkpoints (if using notebooks)
+.ipynb_checkpoints/
 
-# Python-specific
+# Python-specific files
 __pycache__/
+*.py[cod]
+*.so
+
+# IDE-specific files (PyCharm)
+.idea/
+*.iml
+*.iws
+
+# Virtual environments
+venv/
+.envs/
+
+# Configuration files
+config.yaml
+
+# Results and output files
+work/
+*.html
+*.svg
+*.png
+*.pdf
+*.csv
+*.tsv
