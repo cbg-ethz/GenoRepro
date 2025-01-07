@@ -16,3 +16,26 @@ LOGGER.info("REPROFLOW_BASEDIR = %s",REPROFLOW_BASEDIR)
 configfile: "config/config.yaml"
 
 include: "rules/process_fastq.smk"
+
+if config["replicate"]["pair_type"] == "paired":
+
+    include: "rules/create_replicates_paired.smk"
+
+ ############### HELPER FUNCTIONS #################
+ def _limit_number_of_replicates(info) -> int:
+     number = min(
+         config["replicate"]["replicate_number"],
+         math.factorial(info) - 1,
+     )
+     return number
+
+
+ narr = _limit_number_of_replicates(config["replicate"]["record_len"]) + 1
+ # print(range(1,narr))
+
+
+ def gather_checkpoint_outputs_paired(wildcards):
+     return [
+         checkpoints.create_replicates_paired.get(**wildcards).output[0],
+         checkpoints.create_replicates_paired.get(**wildcards).output[1],
+     ]
