@@ -1,260 +1,277 @@
-import base64
-import hashlib
-import math
 import os
-import time
-from collections import namedtuple
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, List
+import gzip
 import numpy as np
 import typer
-import re
-from Bio import SeqIO
 from Bio.Seq import Seq
-import gzip
+from Bio import SeqIO
+import re
+from dataclasses import dataclass
+from typing import List, Optional, Literal
 
-# The namedTuple represents a row of data in the input csv file
-InfoTuple = namedtuple("InfoTuple",
-                       ["directory_path",
-                        "file_names",
-                        "parsed_names",
-                        "pair_type",
-                        "replicate_type",
-                        "replicate_number"],
-                       )
 
-# All the allowed spellings of replicate types in the input csv file
-spellings = {
-    "shuffle": ["shuffle", "sh", "s"],
-    "reverse_complement": ["reverse_complement", "rv", "rc", "r"],
-    "both": ["both", "b", "rs", "rcs", "rcsh", "shrc", "sr"]
-}
+# ============================
+# Constants and Configurations
+# ============================
+class Constants:
+    SPELLINGS = {
+        "shuffle": ["shuffle", "sh", "s"],
+        "reverse_complement": ["reverse_complement", "rv", "rc", "r"],
+        "both": ["both", "b", "rs", "rcs", "rcsh", "shrc", "sr"],
+    }
+    SINGLE_PATTERN = re.compile(r"(?P<base>^.+)(?P<ext>\.(?:fq|fastq)(?:.gz)?)$")
+    PAIRED_PATTERN = re.compile(
+        r"(?P<base>^.+)(?P<read>_(?:[rR]?[12]))(?P<ext>\.(?:fq|fastq)(?:.gz)?)$"
+    )
 
+
+# ============================
+# Data Structures
+# ============================
 @dataclass
 class ParsedFastqFileName:
-    """
-    ParsedFastqFileName stores parsed by Regex groups of filename for each row
-    to build output filepath
-    """
     base: str
     read: List[str]
     ext: List[str]
-    pair_type: Literal['single', 'paired']
+    pair_type: Literal["single", "paired"]
 
-# Define the command line interface using Typer
-app = typer.Typer(add_completion=False)
 
-def generate_shuffles(records, base_seed, num_shuffles):
-    """
-    Generate a list of unique shuffle orders for a set of records.
-    Dynamically adjusts the seed offset based on the number of reads.
-    Excludes the original order.
-    """
-    orders = []
-    original_order = list(range(len(records)))
-    num_reads = len(records)
-    scale = max(1000, int(1e6 / num_reads))  # Larger scale for smaller datasets
+# ============================
+# Utility Classes
+# ============================
+class RecordTransformer:
+    @staticmethod
+    def shuffle(records: List[Seq], base_seed: int, num_shuffles: int) -> List[List[int]]:
+        """
+        Generate a list of unique shuffle orders for a set of records.
+        """
+        orders = []
+        original_order = list(range(len(records)))
+        scale = max(1000, int(1e6 / len(records)))
 
-    for i in range(num_shuffles):
-        rng = np.random.default_rng(base_seed + i * scale)
-        while True:
-            shuffle_order = rng.permutation(len(records))
-            if not np.array_equal(shuffle_order, original_order):
-                break
-        orders.append(shuffle_order)
-    return orders
-
-class InputFileParser:
-    def __init__(self, fastq_type: str,
-                 rep_type: str,
-                 rep_num: int,
-                 fastq1: str,
-                 fastq2: str = None):
-
-        self.fastq_type = fastq_type
-        self.fastq1 = fastq1
-        self.fastq2 = fastq2
-        self.rep_type = rep_type
-        self.rep_num = rep_num
-
-        self.fastq1 = os.path.basename(fastq1)
-        if fastq2 is not None:
-            self.fastq2 = os.path.basename(fastq2)
-        self.fastq_path = Path(os.path.dirname(fastq1))
-
-        file_names, parsed_names = self._check_fastq_files(self.fastq_path,
-                                                           self.fastq_type,
-                                                           self.fastq1,
-                                                           self.fastq2)
-
-        self.rep_type = [k for k, v in spellings.items() if self.rep_type.lower() in v][0]
-
-        self.file_tuple = InfoTuple(self.fastq_path,
-                                    file_names,
-                                    parsed_names,
-                                    self.fastq_type,
-                                    self.rep_type,
-                                    self.rep_num)
-
-        print('-----------------------------------')
-        print(f'directory: {self.fastq_path}')
-        print(f'file1: {self.fastq1}')
-        print(f'file2: {self.fastq2}')
-        print(f'fastq_type: {self.fastq_type}')
-        print(f'rep_type: {self.rep_type}')
-        print(f'rep_num: {self.rep_num}')
-        print('-----------------------------------')
-
+        for i in range(num_shuffles):
+            rng = np.random.default_rng(base_seed + i * scale)
+            while True:
+                shuffle_order = rng.permutation(len(records))
+                if not np.array_equal(shuffle_order, original_order):
+                    break
+            orders.append(shuffle_order.tolist())
+        return orders
 
     @staticmethod
-    def _check_fastq_files(
-            file_path: Path,
-            fastq_type: str,
-            file1: str,
-            file2: str = None) -> tuple[list[str], ParsedFastqFileName]:
-
-        if file2 is not None:
-            if not (file_path / file1).is_file() or not (file_path / file2).is_file() or not file1.endswith(
-                    ("fastq", "fq", "gz")) or not file2.endswith(("fastq", "fq", "gz")):
-                raise FileNotFoundError(f"One or both of the provided files do not exist "
-                                        f"or have an invalid extension.")
-            else:
-                fastq_files = [file1, file2]
-        else:
-            if not (file_path / file1).is_file() or not file1.endswith(("fastq", "fq", "gz")):
-                raise FileNotFoundError(f"The provided file does not exist or "
-                                        f"has an invalid extension.")
-            else:
-                fastq_files = [file1]
-
-        if fastq_type == 'single':
-            # Regex pattern to determine the file name pattern of the file
-            pattern = (
-                # Sample basename (i.e. 'ERR001010')
-                r'(?P<base>^.+)'
-                # Extension of the fastq file (i.e. '.fq.gz')
-                r'(?P<ext>\.(?:fq|fastq)(?:.gz)?)$'
+    def reverse_complement(records: List[Seq]) -> List[Seq]:
+        """
+        Create reverse complement of FASTQ records.
+        """
+        rc_records = []
+        for rec in records:
+            rc_seq = str(rec.seq.reverse_complement())
+            rc_record = rec.__class__(
+                id=rec.id,
+                seq=Seq(rc_seq),
+                description=rec.description,
+                letter_annotations={"phred_quality": rec.letter_annotations["phred_quality"][::-1]}
             )
-            base, ext = re.search(pattern, fastq_files[0]).groups()
-            parsed_names = ParsedFastqFileName(
-                base=base,
+            rc_records.append(rc_record)
+        return rc_records
+
+
+# ============================
+# Core Classes
+# ============================
+class InputFileParser:
+    def __init__(self, pair_type: str, rep_type: str, rep_num: int, fastq1: str, fastq2: Optional[str] = None):
+        self.pair_type = pair_type
+        self.rep_type = next(
+            (k for k, v in Constants.SPELLINGS.items() if rep_type.lower() in v), None
+        )
+        if self.rep_type is None:
+            raise ValueError(f"Invalid replicate type: {rep_type}")
+
+        self.rep_num = rep_num
+        self.fastq1 = Path(fastq1)
+        self.fastq2 = Path(fastq2) if fastq2 else None
+
+        self.parsed_names = self._parse_file_names()
+
+    def _parse_file_names(self) -> ParsedFastqFileName:
+        files = [self.fastq1, self.fastq2] if self.fastq2 else [self.fastq1]
+
+        if len(files) == 1:
+            match = Constants.SINGLE_PATTERN.search(str(files[0].name))
+            if not match:
+                raise ValueError(f"Invalid single-end file name: {files[0].name}")
+
+            return ParsedFastqFileName(
+                base=match.group("base"),
                 read=[],
-                ext=[ext],
-                pair_type='single'
+                ext=[match.group("ext")],
+                pair_type="single",
             )
+
         else:
-            # Regex pattern to determine the filename pattern of the files
-            pattern = (
-                # Sample basename (i.e. 'ERR001010')
-                r'(?P<base>^.+)'
-                # Number of the read in the pair (i.e. '_2')
-                r'(?P<read>_(?:r|R)?[12])'
-                # Extension of the fastq file (i.e. '.fq.gz')
-                r'(?P<ext>\.(?:fq|fastq)(?:.gz)?)$'
+            matches = [Constants.PAIRED_PATTERN.search(str(f.name)) for f in files]
+            if not all(matches):
+                raise ValueError(f"Invalid paired-end file names: {files}")
+
+            base1, base2 = [m.group("base") for m in matches]
+            if base1 != base2:
+                raise ValueError(f"Paired-end file names do not match: {base1} vs {base2}")
+
+            return ParsedFastqFileName(
+                base=base1,
+                read=[m.group("read") for m in matches],
+                ext=[m.group("ext") for m in matches],
+                pair_type="paired",
             )
 
-            # Check if file names match pattern
-            if all(re.match(pattern, f) for f in fastq_files):
-                matches = list(map(lambda x: re.search(pattern, x), fastq_files))
-                base1, base2 = map(lambda x: x.group('base'), matches)
-                read1, read2 = map(lambda x: x.group('read'), matches)
-                ext1, ext2 = map(lambda x: x.group('ext'), matches)
 
-                if base1 != base2:
-                    raise ValueError(
-                        f"{fastq_files[0]} and {fastq_files[1]} do not match"
-                    )
-
-                parsed_names = ParsedFastqFileName(
-                    base=base1,
-                    read=[read1, read2],
-                    ext=[ext1, ext2],
-                    pair_type='paired'
-                )
-            else:
-                raise ValueError(
-                    f"Paired-end files {fastq_files[0]} and {fastq_files[1]} "
-                    f"in {file_path} do not follow the expected "
-                    f"naming convention '_R1' and '_R2'"
-                )
-        return fastq_files, parsed_names
-
-class FastqFileReplicator:
-
-    def __init__(self, parser: InputFileParser, seed: int, out_folder: Path):
+class FastqFileProcessor:
+    def __init__(self, parser: InputFileParser, seed: int, output_folder: Optional[Path]):
         self.parser = parser
-        self.info_tuple = parser.file_tuple
         self.seed = seed
-        self.output_folder = out_folder
+        self.output_folder = output_folder or parser.fastq1.parent
 
-        if out_folder and not os.path.isdir(out_folder):
-            os.mkdir(out_folder)
-        self.output_filepaths = []
-
-        # Create a subdirectory based on the seed number if it doesn't exist
-        if out_folder:
-            seed_subfolder = out_folder / f"seed_{self.seed}"
-            print(seed_subfolder)
+        if self.output_folder:
+            seed_subfolder = self.output_folder / f"seed_{self.seed}"
             if not os.path.isdir(seed_subfolder):
                 os.mkdir(seed_subfolder)
             self.output_folder = seed_subfolder
 
-        # print(out_folder)
-
-        self.output_filepaths = []
-
-    def fastq_replicator(self):
-        self._process_tuple(self.info_tuple)
-
-    def _process_tuple(self, info):
-
-        def _get_records(file_path):
-            if file_path.endswith(".gz"):
-                with gzip.open(file_path, 'rt') as handle:
-                    return list(SeqIO.parse(handle, "fastq"))
-            else:
-                with open(file_path, 'r') as handle:
-                    return list(SeqIO.parse(handle, "fastq"))
-
-        records = _get_records(os.path.join(info.directory_path, info.file_names[0]))
-        num_shuffles = info.replicate_number
-
-        shuffle_orders = generate_shuffles(records, self.seed, num_shuffles)
-
-        for idx, order in enumerate(shuffle_orders):
-            shuffled_records = [records[i] for i in order]
-            self._write_records(shuffled_records, info, idx)
-
-    def _write_records(self, recs, row, idx=0):
-        output_file = self._get_output_file_path(row, idx)
-        if output_file.endswith("gz"):
-            with gzip.open(output_file, 'wt') as f:
-                SeqIO.write(recs, f, "fastq")
+    def process(self, all_replicates: bool = False):
+        if all_replicates:
+            self._process_all_replicates()
+        elif self.parser.parsed_names.pair_type == "single":
+            self._process_single_end()
         else:
-            with open(output_file, 'wt') as f:
-                SeqIO.write(recs, f, "fastq")
-        self.output_filepaths.append(output_file)
+            self._process_paired_end()
 
-    def _get_output_file_path(self, row, idx=0):
-        filename = f"{row.parsed_names.base}_sh{idx + 1}{row.parsed_names.ext[0]}"
-        if not self.output_folder:
-            self.output_folder = row.directory_path
-        return os.path.join(self.output_folder, filename)
+    def _process_all_replicates(self):
+        """
+        Process all replicate types when the `all` option is set to True.
+        """
+        # Shuffle
+        self.parser.rep_type = "shuffle"
+        self._process_single_end() if self.parser.parsed_names.pair_type == "single" else self._process_paired_end()
+
+        # Reverse Complement
+        self.parser.rep_type = "reverse_complement"
+        self._process_single_end() if self.parser.parsed_names.pair_type == "single" else self._process_paired_end()
+
+        # Both
+        self.parser.rep_type = "both"
+        self._process_single_end() if self.parser.parsed_names.pair_type == "single" else self._process_paired_end()
+
+    def _process_single_end(self):
+        records = self._read_fastq(self.parser.fastq1)
+        if self.parser.rep_type == "shuffle":
+            self._shuffle_and_write(records)
+        elif self.parser.rep_type == "reverse_complement":
+            self._reverse_complement_and_write(records)
+        elif self.parser.rep_type == "both":
+            self._shuffle_reverse_complement_and_write(records)
+
+    def _process_paired_end(self):
+        records1 = self._read_fastq(self.parser.fastq1)
+        records2 = self._read_fastq(self.parser.fastq2)
+        if len(records1) != len(records2):
+            raise ValueError("Paired-end files have unequal records.")
+
+        if self.parser.rep_type == "shuffle":
+            self._shuffle_and_write(records1, records2)
+        elif self.parser.rep_type == "reverse_complement":
+            self._reverse_complement_and_write(records1, records2)
+        elif self.parser.rep_type == "both":
+            self._shuffle_reverse_complement_and_write(records1, records2)
+
+    def _read_fastq(self, file_path: Path) -> List[Seq]:
+        with gzip.open(file_path, 'rt') if file_path.suffix == ".gz" else open(file_path, 'r') as handle:
+            return list(SeqIO.parse(handle, "fastq"))
+
+    def _shuffle_and_write(self, records1: List[Seq], records2: Optional[List[Seq]] = None):
+        num_shuffles = min(
+            self.parser.rep_num, np.math.factorial(len(records1)) - 1
+        )
+        orders = RecordTransformer.shuffle(records1, self.seed, num_shuffles)
+
+        read_suffix1 = self.parser.parsed_names.read[0] if self.parser.parsed_names.read else ""
+
+        for idx, order in enumerate(orders):
+            shuffled1 = [records1[i] for i in order]
+            self._write_fastq(shuffled1, suffix=f"_sh{idx + 1}", read_suffix=read_suffix1)
+
+            if records2:
+                read_suffix2 = self.parser.parsed_names.read[1]
+                shuffled2 = [records2[i] for i in order]
+                self._write_fastq(shuffled2, suffix=f"_sh{idx + 1}", read_suffix=read_suffix2)
+
+    def _reverse_complement_and_write(self, records1: List[Seq], records2: Optional[List[Seq]] = None):
+        rc1 = RecordTransformer.reverse_complement(records1)
+        read_suffix1 = self.parser.parsed_names.read[0] if self.parser.parsed_names.read else ""
+        self._write_fastq(rc1, suffix="_rc", read_suffix=read_suffix1)
+
+        if records2:
+            rc2 = RecordTransformer.reverse_complement(records2)
+            read_suffix2 = self.parser.parsed_names.read[1]
+            self._write_fastq(rc2, suffix="_rc", read_suffix=read_suffix2)
+
+    def _shuffle_reverse_complement_and_write(self, records1: List[Seq], records2: Optional[List[Seq]] = None):
+        num_shuffles = min(
+            self.parser.rep_num, np.math.factorial(len(records1)) - 1
+        )
+        orders = RecordTransformer.shuffle(records1, self.seed, num_shuffles)
+
+        read_suffix1 = self.parser.parsed_names.read[0] if self.parser.parsed_names.read else ""
+
+        for idx, order in enumerate(orders):
+            shuffled1 = [records1[i] for i in order]
+            rc_shuffled1 = RecordTransformer.reverse_complement(shuffled1)
+            self._write_fastq(rc_shuffled1, suffix=f"_both{idx + 1}", read_suffix=read_suffix1)
+
+            if records2:
+                read_suffix2 = self.parser.parsed_names.read[1]
+                shuffled2 = [records2[i] for i in order]
+                rc_shuffled2 = RecordTransformer.reverse_complement(shuffled2)
+                self._write_fastq(rc_shuffled2, suffix=f"_both{idx + 1}", read_suffix=read_suffix2)
+
+    def _write_fastq(self, records: List[Seq], suffix: str, read_suffix: str):
+        """
+        Writes the FASTQ records to an output file.
+
+        Parameters:
+            records (List[Seq]): The FASTQ records to write.
+            suffix (str): The suffix for the output file (e.g., `_sh1`, `_rc`).
+            read_suffix (str): The read suffix for paired-end files (e.g., `_r1`, `_1`).
+        """
+
+        output_file = self.output_folder / f"{self.parser.parsed_names.base}{suffix}{read_suffix}{self.parser.parsed_names.ext[0]}"
+        with gzip.open(output_file, 'wt') if output_file.suffix == ".gz" else open(output_file, 'w') as handle:
+            SeqIO.write(records, handle, "fastq")
+
+
+# ============================
+# Command-Line Interface
+# ============================
+app = typer.Typer()
+
 
 @app.command()
 def main(
         fastq_file1: str = typer.Option(..., "--fastq_file1", "-f1", help="First FASTQ file"),
-        fastq_file2: str = typer.Option(None, "--fastq_file2", "-f2", help="Second FASTQ file (optional for paired data)"),
-        output_folder: Path = typer.Option(None, "--output", "-o", help="Output folder"),
+        fastq_file2: Optional[str] = typer.Option(None, "--fastq_file2", "-f2",
+                                                  help="Second FASTQ file (optional for paired data)"),
+        output_folder: Optional[Path] = typer.Option(None, "--output_folder", "-o", help="Output folder"),
         replicate_type: str = typer.Option("shuffle", "--rep_type", "-r", help="Type of replicates"),
         replicate_number: int = typer.Option(1, "--rep_num", "-n", help="Number of replicates"),
         seed: int = typer.Option(1, "--seed", "-s", help="Seed for reproducibility"),
-        pair_type: str = typer.Option("paired", "--pair_type", "-p", help="Pair type of data")):
+        pair_type: str = typer.Option("paired", "--pair_type", "-p", help="Pair type of data"),
+        all_replicates: bool = typer.Option(False, "--all", "-a", help="Process all replicate types"),
 
+):
     parser = InputFileParser(pair_type, replicate_type, replicate_number, fastq_file1, fastq_file2)
-    replicator = FastqFileReplicator(parser, seed, output_folder)
-    replicator.fastq_replicator()
+    processor = FastqFileProcessor(parser, seed, output_folder)
+    processor.process(all_replicates=all_replicates)
+
 
 if __name__ == "__main__":
     app()
