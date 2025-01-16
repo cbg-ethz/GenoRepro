@@ -40,3 +40,11 @@ work/
 *.pdf
 *.csv
 *.tsv
+
+# temp scripts to check
+workflow/scripts/create_replicates2.py
+
+# run cripts
+dag.sh
+run.sh
+
