@@ -2,12 +2,10 @@ checkpoint create_replicates_single:
     input:
         fastq=config["replicate"]["input_folder"] + "{sample}.fastq",
     output:
-        out=config["replicate"]["output_folder"] + "seed_{seed}/" + "{sample}_{Rtype}{n}.fastq"
-        if config["replicate"]["replicate_type"] == "sh" or config["replicate"]["replicate_type"] == "both"
-        else config["replicate"]["output_folder"] + "seed_{seed}/" + "{sample}_{Rtype}.fastq",
+        out=config["replicate"]["output_folder"] + "seed_{seed}/" + "{sample}_{ending}.fastq"
     params:
         out_folder=config["replicate"]["output_folder"],
-        rep_type=config["replicate"]["replicate_type"],
+        rep_types=config["replicate"]["replicate_types"],
         rep_num=config["replicate"]["replicate_number"],
         pair_type=config["replicate"]["pair_type"],
         seed=str(config["replicate"]["seed"]),
@@ -22,8 +20,9 @@ checkpoint create_replicates_single:
         
         python {REPROFLOW_BASEDIR}/scripts/create_replicates.py \
             -f1 {input.fastq} \
-            -r {params.rep_type} \
+            -r {params.rep_types} \
             -n {params.rep_num} \
+            --all \
             -p {params.pair_type} \
             -o {params.out_folder} \
             -s {params.seed}

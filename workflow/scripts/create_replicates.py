@@ -1,3 +1,4 @@
+import ast
 import os
 from pathlib import Path
 import gzip
@@ -82,17 +83,21 @@ class RecordTransformer:
 class InputFileParser:
     def __init__(self, pair_type: str, rep_type: str, rep_num: int, fastq1: str, fastq2: Optional[str] = None):
         self.pair_type = pair_type
-        self.rep_type = next(
-            (k for k, v in Constants.SPELLINGS.items() if rep_type.lower() in v), None
-        )
-        if self.rep_type is None:
-            raise ValueError(f"Invalid replicate type: {rep_type}")
-
+        self.rep_type = rep_type  # Allow rep_type to be empty initially
         self.rep_num = rep_num
         self.fastq1 = Path(fastq1)
         self.fastq2 = Path(fastq2) if fastq2 else None
 
+        # Parse and store file names immediately
         self.parsed_names = self._parse_file_names()
+
+    def validate_rep_type(self):
+        """Validate the replicate type."""
+        self.rep_type = next(
+            (k for k, v in Constants.SPELLINGS.items() if self.rep_type.lower() in v), None
+        )
+        if self.rep_type is None:
+            raise ValueError(f"Invalid replicate type: {self.rep_type}")
 
     def _parse_file_names(self) -> ParsedFastqFileName:
         files = [self.fastq1, self.fastq2] if self.fastq2 else [self.fastq1]
@@ -103,7 +108,7 @@ class InputFileParser:
                 raise ValueError(f"Invalid single-end file name: {files[0].name}")
 
             return ParsedFastqFileName(
-                base=match.group("base"),
+                base=match.group("base" ),
                 read=[],
                 ext=[match.group("ext")],
                 pair_type="single",
@@ -126,6 +131,7 @@ class InputFileParser:
             )
 
 
+
 class FastqFileProcessor:
     def __init__(self, parser: InputFileParser, seed: int, output_folder: Optional[Path]):
         self.parser = parser
@@ -138,29 +144,13 @@ class FastqFileProcessor:
                 os.mkdir(seed_subfolder)
             self.output_folder = seed_subfolder
 
-    def process(self, all_replicates: bool = False):
-        if all_replicates:
-            self._process_all_replicates()
-        elif self.parser.parsed_names.pair_type == "single":
-            self._process_single_end()
-        else:
-            self._process_paired_end()
-
-    def _process_all_replicates(self):
-        """
-        Process all replicate types when the `all` option is set to True.
-        """
-        # Shuffle
-        self.parser.rep_type = "shuffle"
-        self._process_single_end() if self.parser.parsed_names.pair_type == "single" else self._process_paired_end()
-
-        # Reverse Complement
-        self.parser.rep_type = "reverse_complement"
-        self._process_single_end() if self.parser.parsed_names.pair_type == "single" else self._process_paired_end()
-
-        # Both
-        self.parser.rep_type = "both"
-        self._process_single_end() if self.parser.parsed_names.pair_type == "single" else self._process_paired_end()
+    def process(self, replicate_types: List[str]):
+        for rtype in replicate_types:
+            self.parser.rep_type = rtype
+            if self.parser.parsed_names.pair_type == "single":
+                self._process_single_end()
+            else:
+                self._process_paired_end()
 
     def _process_single_end(self):
         records = self._read_fastq(self.parser.fastq1)
@@ -261,16 +251,33 @@ def main(
         fastq_file2: Optional[str] = typer.Option(None, "--fastq_file2", "-f2",
                                                   help="Second FASTQ file (optional for paired data)"),
         output_folder: Optional[Path] = typer.Option(None, "--output_folder", "-o", help="Output folder"),
-        replicate_type: str = typer.Option("shuffle", "--rep_type", "-r", help="Type of replicates"),
+        replicate_types: Optional[List[str]] = typer.Option(None, "--rep_types", "-r",
+                                                            help="List of replicate types (e.g., shuffle, rc, both)"),
         replicate_number: int = typer.Option(1, "--rep_num", "-n", help="Number of replicates"),
         seed: int = typer.Option(1, "--seed", "-s", help="Seed for reproducibility"),
         pair_type: str = typer.Option("paired", "--pair_type", "-p", help="Pair type of data"),
         all_replicates: bool = typer.Option(False, "--all", "-a", help="Process all replicate types"),
-
 ):
-    parser = InputFileParser(pair_type, replicate_type, replicate_number, fastq_file1, fastq_file2)
+    # Default to all replicate types if `all_replicates` is True
+    if all_replicates:
+        replicate_types = ["shuffle", "reverse_complement", "both"]
+
+    # Ensure `replicate_types` is not None
+    if replicate_types is None:
+        raise ValueError("You must provide replicate types with --rep_types or use --all.")
+
+    # Validate replicate types
+    replicate_types = [rtype.lower() for rtype in replicate_types]
+    valid_types = Constants.SPELLINGS.keys()
+    for rtype in replicate_types:
+        if rtype not in valid_types:
+            print('not valid: ', rtype)
+            raise ValueError(f"Invalid replicate type: {rtype}. Allowed types: {list(valid_types)}")
+
+    # Process each replicate type
+    parser = InputFileParser(pair_type, "", replicate_number, fastq_file1, fastq_file2)
     processor = FastqFileProcessor(parser, seed, output_folder)
-    processor.process(all_replicates=all_replicates)
+    processor.process(replicate_types)
 
 
 if __name__ == "__main__":
