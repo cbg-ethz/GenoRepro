@@ -15,7 +15,8 @@ configfile: "config/config.yaml"
 
 
 SAMPLES = config["replicate"]["samples"]
-print(SAMPLES)
+selected_tools = config["alignment"]["selected_tools"]
+TOOLS = selected_tools
 
 ############### HELPER FUNCTIONS #################
 def _limit_number_of_replicates(info) -> int:
@@ -36,6 +37,11 @@ if config["replicate"]["pair_type"] == "paired":
 if config["replicate"]["pair_type"] == "single":
 
     include: "rules/create_replicates_single.smk"
+
+if "bwa2" in selected_tools:
+
+    include: "rules/bwa-mem2.smk"
+
 
 
 
@@ -65,78 +71,244 @@ def gather_checkpoint_outputs_single(wildcards):
 ext = ".fastq"
 
 
+# def get_input():
+#
+#     paths = []  # Initialize an empty list to store all paths
+#
+#     if config["replicate"]["pair_type"] == "paired":
+#
+#         if config["replicate"]["replicate_type"] == "sh":
+#             paths += expand(
+#                 config["replicate"]["output_folder"] + "seed_{seed}/"
+#                 + "{sample}_sh{n}_{end}" + ext,
+#                 sample=SAMPLES,
+#                 n=range(1,narr),
+#                 seed=config["replicate"]["seed"],
+#                 end=[1, 2]
+#             )
+#
+#         elif config["replicate"]["replicate_type"] == "rc":
+#             paths += expand(
+#                 config["replicate"]["output_folder"] + "seed_{seed}/"
+#                 + "{sample}_rc_{end}" + ext,
+#                 sample=SAMPLES,
+#                 seed=config["replicate"]["seed"],
+#                 end=[1, 2]
+#             )
+#
+#         elif config["replicate"]["replicate_type"] == "both":
+#             paths += expand(
+#                 config["replicate"]["output_folder"] + "seed_{seed}/"
+#                 + "{sample}_both{n}_{end}" + ext,
+#                 sample=SAMPLES,
+#                 n=range(1,narr),
+#                 seed=config["replicate"]["seed"],
+#                 end=[1, 2]
+#             )
+#
+#     if config["replicate"]["pair_type"] == "single":
+#         if config["replicate"]["replicate_type"] == "sh":
+#             paths += expand(
+#                 config["replicate"]["output_folder"] + "seed_{seed}/"
+#                 + "{sample}_sh{n}" + ext,
+#                 sample=SAMPLES,
+#                 n=range(1,narr),
+#                 seed=config["replicate"]["seed"],
+#             )
+#
+#         elif config["replicate"]["replicate_type"] == "rc":
+#             paths += expand(
+#                 config["replicate"]["output_folder"] + "seed_{seed}/"
+#                 + "{sample}_rc" + ext,
+#                 sample=SAMPLES,
+#                 seed=config["replicate"]["seed"],
+#             )
+#
+#         elif config["replicate"]["replicate_type"] == "both":
+#             paths += expand(
+#                 config["replicate"]["output_folder"] + "seed_{seed}/"
+#                 + "{sample}_both{n}" + ext,
+#                 sample=SAMPLES,
+#                 n=range(1,narr),
+#                 seed=config["replicate"]["seed"],
+#             )
+#
+#     return paths
+
+
 def get_input():
 
     paths = []  # Initialize an empty list to store all paths
 
     if config["replicate"]["pair_type"] == "paired":
 
-        if config["replicate"]["replicate_type"] == "sh":
-            paths += expand(
-                config["replicate"]["output_folder"] + "seed_{seed}/"
-                + "{sample}_sh{n}_{end}" + ext,
-                sample=SAMPLES,
-                n=range(1,narr),
-                seed=config["replicate"]["seed"],
-                end=[1, 2]
-            )
+        paths += expand(
+            config["replicate"]["output_folder"] + "seed_{seed}/"
+            + "{sample}_sh{n}_{end}" + ext,
+            sample=SAMPLES,
+            n=range(1,narr),
+            seed=config["replicate"]["seed"],
+            end=[1, 2]
+        )
 
-        elif config["replicate"]["replicate_type"] == "rc":
-            paths += expand(
-                config["replicate"]["output_folder"] + "seed_{seed}/"
-                + "{sample}_rc_{end}" + ext,
-                sample=SAMPLES,
-                seed=config["replicate"]["seed"],
-                end=[1, 2]
-            )
+        paths += expand(
+            config["replicate"]["output_folder"] + "seed_{seed}/"
+            + "{sample}_rc_{end}" + ext,
+            sample=SAMPLES,
+            seed=config["replicate"]["seed"],
+            end=[1, 2]
+        )
 
-        elif config["replicate"]["replicate_type"] == "both":
-            paths += expand(
-                config["replicate"]["output_folder"] + "seed_{seed}/"
-                + "{sample}_both{n}_{end}" + ext,
-                sample=SAMPLES,
-                n=range(1,narr),
-                seed=config["replicate"]["seed"],
-                end=[1, 2]
-            )
+        paths += expand(
+            config["replicate"]["output_folder"] + "seed_{seed}/"
+            + "{sample}_both{n}_{end}" + ext,
+            sample=SAMPLES,
+            n=range(1,narr),
+            seed=config["replicate"]["seed"],
+            end=[1, 2]
+        )
 
-    if config["replicate"]["pair_type"] == "single":
-        if config["replicate"]["replicate_type"] == "sh":
-            paths += expand(
-                config["replicate"]["output_folder"] + "seed_{seed}/"
-                + "{sample}_sh{n}" + ext,
-                sample=SAMPLES,
-                n=range(1,narr),
-                seed=config["replicate"]["seed"],
-            )
-
-        elif config["replicate"]["replicate_type"] == "rc":
-            paths += expand(
-                config["replicate"]["output_folder"] + "seed_{seed}/"
-                + "{sample}_rc" + ext,
-                sample=SAMPLES,
-                seed=config["replicate"]["seed"],
-            )
-
-        elif config["replicate"]["replicate_type"] == "both":
-            paths += expand(
-                config["replicate"]["output_folder"] + "seed_{seed}/"
-                + "{sample}_both{n}" + ext,
-                sample=SAMPLES,
-                n=range(1,narr),
-                seed=config["replicate"]["seed"],
-            )
+    # if config["replicate"]["pair_type"] == "single":
+    #     if config["replicate"]["replicate_type"] == "sh":
+    #         paths += expand(
+    #             config["replicate"]["output_folder"] + "seed_{seed}/"
+    #             + "{sample}_sh{n}" + ext,
+    #             sample=SAMPLES,
+    #             n=range(1,narr),
+    #             seed=config["replicate"]["seed"],
+    #         )
+    #
+    #     elif config["replicate"]["replicate_type"] == "rc":
+    #         paths += expand(
+    #             config["replicate"]["output_folder"] + "seed_{seed}/"
+    #             + "{sample}_rc" + ext,
+    #             sample=SAMPLES,
+    #             seed=config["replicate"]["seed"],
+    #         )
+    #
+    #     elif config["replicate"]["replicate_type"] == "both":
+    #         paths += expand(
+    #             config["replicate"]["output_folder"] + "seed_{seed}/"
+    #             + "{sample}_both{n}" + ext,
+    #             sample=SAMPLES,
+    #             n=range(1,narr),
+    #             seed=config["replicate"]["seed"],
+    #         )
 
     return paths
 
+out_folder = config["alignment"]["output_folder"] + "bwa2/"
+# ext = ".fastq"
 
-print(get_input())
+
+ext = ".bam"
+
+def get_inputs():
+
+    files = []  # Initialize an empty list to store all paths
+
+
+    if config["replicate"]["pair_type"] == "paired":
+
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "bam/"
+            + "{sample}_{rtype}{n}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1, narr),
+            rtype=['sh', 'both'],
+            seed=config["replicate"]["seed"],
+
+        )
+
+        files +=expand(
+                out_folder
+                + "seed_{seed}/" + "bam/"
+                + "{sample}_{rtype}"
+                + ext,
+                sample=SAMPLES,
+                tool=TOOLS,
+                n=range(1,narr),
+                rtype='rc',
+                seed=config["replicate"]["seed"],
+
+            )
+
+        files +=expand(
+                out_folder
+                + "seed_{seed}/" + "bam/"
+                + "{sample}"
+                + ext ,
+                sample=SAMPLES,
+                tool=TOOLS,
+                seed=config["replicate"]["seed"]
+        )
+
+
+    else:
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "bam/"
+            + "{sample}_{rtype}{n}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1,narr),
+            rtype=['sh', 'both'],
+            seed=config["replicate"]["seed"],
+
+        )
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "bam/"
+            + "{sample}_{rtype}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1,narr),
+            rtype='rc',
+            seed=config["replicate"]["seed"],
+
+        )
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "bam/"
+            + "{sample}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            seed=config["replicate"]["seed"]
+        )
+
+    return files
+
+
+
+
+
+
+
+print(f'expected outputs: {get_inputs()}')
+
+# print(f"Expected path: {config['alignment']['genome']}GRCh38.fna")
+
+# rule all:
+#     input:
+#         expand(config['alignment']['genome'] + "GRCh38.fna.{ext}",
+#                ext=["0123", "amb", "ann", "bwt.2bit.64", "pac"])
 
 
 rule all:
     input:
-        get_input()
-#         gather_checkpoint_outputs_single()
+        get_inputs()
+        # get_inputs()
+#         # gather_checkpoint_outputs_single()
 
 # rule all:
 #     input:
