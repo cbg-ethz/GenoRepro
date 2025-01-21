@@ -50,3 +50,6 @@ run.sh
 
 #backup folder
 backup/
+
+#resource folder
+resources/
