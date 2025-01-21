@@ -42,6 +42,8 @@ if "bwa2" in selected_tools:
 
     include: "rules/bwa-mem2.smk"
 
+include: "rules/parser_bam.smk"
+
 
 
 
@@ -197,13 +199,13 @@ def get_input():
 
     return paths
 
-out_folder = config["alignment"]["output_folder"] + "bwa2/"
+out_folder = config["assessment"]["parser_out"] + "bwa2/"
 # ext = ".fastq"
 
 
 ext = ".bam"
 
-def get_inputs():
+def get_bams():
 
     files = []  # Initialize an empty list to store all paths
 
@@ -289,12 +291,96 @@ def get_inputs():
     return files
 
 
+ext = '.csv'
+def get_parsed_csvs():
+    files = []  # Initialize an empty list to store all paths
+
+    if config["replicate"]["pair_type"] == "paired":
+
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "csv/"
+            + "{sample}_{rtype}{n}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1,narr),
+            rtype=['sh', 'both'],
+            seed=config["replicate"]["seed"],
+
+        )
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "csv/"
+            + "{sample}_{rtype}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1,narr),
+            rtype='rc',
+            seed=config["replicate"]["seed"],
+
+        )
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "csv/"
+            + "{sample}_o"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            seed=config["replicate"]["seed"]
+        )
+
+
+    else:
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "csv/"
+            + "{sample}_{rtype}{n}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1,narr),
+            rtype=['sh', 'both'],
+            seed=config["replicate"]["seed"],
+
+        )
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "csv/"
+            + "{sample}_{rtype}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1,narr),
+            rtype='rc',
+            seed=config["replicate"]["seed"],
+
+        )
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "csv/"
+            + "{sample}_o"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            seed=config["replicate"]["seed"]
+        )
+
+    return files
 
 
 
 
 
-print(f'expected outputs: {get_inputs()}')
+
+print(f'expected outputs: {get_parsed_csvs()}')
 
 # print(f"Expected path: {config['alignment']['genome']}GRCh38.fna")
 
@@ -306,7 +392,7 @@ print(f'expected outputs: {get_inputs()}')
 
 rule all:
     input:
-        get_inputs()
+        get_parsed_csvs()
         # get_inputs()
 #         # gather_checkpoint_outputs_single()
 
