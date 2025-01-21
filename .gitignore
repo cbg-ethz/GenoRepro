@@ -44,7 +44,9 @@ work/
 # temp scripts to check
 workflow/scripts/create_replicates2.py
 
-# run cripts
+# run scripts
 dag.sh
 run.sh
 
+#backup folder
+backup/
