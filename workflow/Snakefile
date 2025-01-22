@@ -43,6 +43,8 @@ if "bwa2" in selected_tools:
     include: "rules/bwa-mem2.smk"
 
 include: "rules/parser_bam.smk"
+include: "rules/comparer_bam.smk"
+
 
 
 
@@ -376,11 +378,81 @@ def get_parsed_csvs():
     return files
 
 
+out_folder = config["assessment"]["comparer_out"] + "bwa2/"
+
+
+
+ext = '.txt'
+def get_comp():
+    files = []  # Initialize an empty list to store all paths
+
+    if config["replicate"]["pair_type"] == "paired":
+
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "done/"
+            + "{sample}_o_{rtype}{n}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1,narr),
+            rtype=['sh', 'both'],
+            seed=config["replicate"]["seed"],
+
+        )
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "done/"
+            + "{sample}_o_{rtype}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1,narr),
+            rtype='rc',
+            seed=config["replicate"]["seed"],
+
+        )
+
+
+    else:
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "done/"
+            + "{sample}_o_{rtype}{n}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1,narr),
+            rtype=['sh', 'both'],
+            seed=config["replicate"]["seed"],
+
+        )
+
+        files += expand(
+            out_folder
+            + "seed_{seed}/" + "done/"
+            + "{sample}_o_{rtype}"
+            + ext,
+            sample=SAMPLES,
+            tool=TOOLS,
+            n=range(1,narr),
+            rtype='rc',
+            seed=config["replicate"]["seed"],
+
+        )
+
+
+    return files
 
 
 
 
-print(f'expected outputs: {get_parsed_csvs()}')
+
+
+print(f'expected outputs: {get_comp()}')
 
 # print(f"Expected path: {config['alignment']['genome']}GRCh38.fna")
 
@@ -392,7 +464,8 @@ print(f'expected outputs: {get_parsed_csvs()}')
 
 rule all:
     input:
-        get_parsed_csvs()
+        get_comp()
+        # get_parsed_csvs()
         # get_inputs()
 #         # gather_checkpoint_outputs_single()
 
