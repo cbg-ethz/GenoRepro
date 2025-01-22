@@ -652,19 +652,26 @@ class Comparer:
             lambda x: ast.literal_eval(x) if pd.notnull(x) else []
         )
 
-        # Find the overall highest quality score across both datasets
-        highest_quality = max(
-            max((max(row) for row in df[f'{l1}_parsed_quality'] if row), default=float('-inf')),
-            max((max(row) for row in df[f'{l2}_parsed_quality'] if row), default=float('-inf')),
+        # Initialize highest_quality
+        highest_quality = None
+
+        # Find the highest quality for l1
+        highest_quality_l1 = max(
+            (max(row) for row in df[f'{l1}_parsed_quality'] if row),
             default=None
         )
 
-        # If no valid quality scores are found, set result to "NA"
-        if highest_quality is None or highest_quality == float('-inf'):
-            self.write_row(feature=f'high_quality_mapped_type1', reads="NA", total_reads=self.fastq_reads)
-            self.write_row(feature=f'high_quality_mapped_type2', reads="NA", total_reads=self.fastq_reads)
-            print("No valid quality scores found. Setting high quality columns to NA.")
-            return
+        # Find the highest quality for l2
+        highest_quality_l2 = max(
+            (max(row) for row in df[f'{l2}_parsed_quality'] if row),
+            default=None
+        )
+
+        # Determine the overall highest quality
+        if highest_quality_l1 is not None or highest_quality_l2 is not None:
+            highest_quality = max(
+                filter(None, [highest_quality_l1, highest_quality_l2])
+            )
 
         # Define a lambda to check if all items in the list equal the highest quality
         is_both_highest = lambda x: all(item == highest_quality for item in x)
