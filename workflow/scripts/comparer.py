@@ -214,7 +214,9 @@ class Comparer:
             Number of unfiltered reads to calculate the percentage
             (almost always number of unambiguous reads)
         """
-        if total_reads == 0:
+        if isinstance(reads, str) and reads == "NA":
+            percentage = "NA"
+        elif total_reads == 0:
             percentage = 0
         else:
             percentage = round(100 * reads / total_reads, 3)
@@ -635,15 +637,36 @@ class Comparer:
         # Retrieve labels dynamically
         l1, l2 = self.get_labels()
 
+        # Check if quality columns contain valid data
+        if df[f'{l1}_quality'].isnull().all() and df[f'{l2}_quality'].isnull().all():
+            self.write_row(feature=f'high_quality_mapped_type1', reads="NA", total_reads=self.fastq_reads)
+            self.write_row(feature=f'high_quality_mapped_type2', reads="NA", total_reads=self.fastq_reads)
+            print("All quality values are None for both datasets. Skipping calculation.")
+            return
+
         # Assuming quality columns store string representations of lists
-        df[f'{l1}_parsed_quality'] = df[f'{l1}_quality'].apply(ast.literal_eval)
-        df[f'{l2}_parsed_quality'] = df[f'{l2}_quality'].apply(ast.literal_eval)
+        df[f'{l1}_parsed_quality'] = df[f'{l1}_quality'].apply(
+            lambda x: ast.literal_eval(x) if pd.notnull(x) else []
+        )
+        df[f'{l2}_parsed_quality'] = df[f'{l2}_quality'].apply(
+            lambda x: ast.literal_eval(x) if pd.notnull(x) else []
+        )
 
         # Find the overall highest quality score across both datasets
-        highest_quality = max(max(max(row) for row in df[f'{l1}_parsed_quality']),
-                              max(max(row) for row in df[f'{l2}_parsed_quality']))
+        highest_quality = max(
+            max((max(row) for row in df[f'{l1}_parsed_quality'] if row), default=float('-inf')),
+            max((max(row) for row in df[f'{l2}_parsed_quality'] if row), default=float('-inf')),
+            default=None
+        )
 
-        # Define a lambda to check if both items in the list equal the highest quality
+        # If no valid quality scores are found, set result to "NA"
+        if highest_quality is None or highest_quality == float('-inf'):
+            self.write_row(feature=f'high_quality_mapped_type1', reads="NA", total_reads=self.fastq_reads)
+            self.write_row(feature=f'high_quality_mapped_type2', reads="NA", total_reads=self.fastq_reads)
+            print("No valid quality scores found. Setting high quality columns to NA.")
+            return
+
+        # Define a lambda to check if all items in the list equal the highest quality
         is_both_highest = lambda x: all(item == highest_quality for item in x)
 
         # Filter for rows where both quality scores match the highest quality and are marked as properly paired
@@ -660,8 +683,10 @@ class Comparer:
                        reads=df_high_quality_proper_l2.shape[0],
                        total_reads=self.fastq_reads)
 
-        if len(df_high_quality_proper_l1) > 0: print('high_quality_mapped_type1: ', df_high_quality_proper_l1.index[0])
-        if len(df_high_quality_proper_l2) > 0: print('high_quality_mapped_type2: ', df_high_quality_proper_l2.index[0])
+        if len(df_high_quality_proper_l1) > 0:
+            print('high_quality_mapped_type1: ', df_high_quality_proper_l1.index[0])
+        if len(df_high_quality_proper_l2) > 0:
+            print('high_quality_mapped_type2: ', df_high_quality_proper_l2.index[0])
 
     def compare(self):
         df = self.merge_dataframes()
