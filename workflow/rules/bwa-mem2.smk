@@ -1,4 +1,4 @@
-rule bwa_index:
+rule index_bwa:
     input:
         index="{genome}",
     output:
@@ -21,7 +21,7 @@ rule bwa_index:
 
 rule align_bwa2_original:
     input:
-        index=config['alignment']['genome'],
+        index=multiext(config['alignment']['genome'], ".amb", ".ann", ".bwt.2bit.64", ".pac", ".0123"),
         fastq1=(lambda wildcards: config["replicate"]["input_folder"] + f"{wildcards.sample}_1.fastq"
         if config['replicate']['pair_type'] == 'paired'
         else config["replicate"]["input_folder"] + f"{wildcards.sample}.fastq"),
@@ -32,7 +32,8 @@ rule align_bwa2_original:
     log:
         config["alignment"]["output_folder"] + "bwa2/seed_{seed}/" + "log/{sample}_{ending}.log"
     params:
-        pair_type=config["replicate"]["pair_type"]
+        pair_type=config["replicate"]["pair_type"],
+        idx=config['alignment']['genome']
     threads: 6
     conda:
         "../envs/bwa-mem2.yaml"
@@ -45,8 +46,8 @@ rule align_bwa2_original:
             bwa-mem2 mem {input.index} {input.fastq1} | samtools view -bS -> {output} 2> {log}
         else
             echo "Paired-end alignment for {wildcards.sample} input: {input} output: {output}"
-            bwa-mem2 mem {input.index} {input.fastq1} {input.fastq2} | samtools view -bS -> {output} 2> {log}
-
+            bwa-mem2 mem {params.idx} {input.fastq1} {input.fastq2} | samtools view -bS -> {output} 2> {log}
+            # bwa-mem2.avx mem {params.idx} {input.fastq1} {input.fastq2} > {output}
         fi
         """
 
@@ -54,7 +55,7 @@ rule align_bwa2_original:
 
 rule align_bwa2_replicates:
     input:
-        index=config['alignment']['genome'],
+        index=multiext(config['alignment']['genome'], ".amb", ".ann", ".bwt.2bit.64", ".pac", ".0123"),
         fastq1=lambda wildcards: gather_checkpoint_outputs_paired(wildcards)[0] \
             if config['replicate']['pair_type'] == 'paired' else \
             gather_checkpoint_outputs_single(wildcards),
@@ -65,7 +66,8 @@ rule align_bwa2_replicates:
     log:
         config["alignment"]["output_folder"] + "bwa2/seed_{seed}/" + "log/{sample}_{ending}.log"
     params:
-        pair_type=config["replicate"]["pair_type"]
+        pair_type=config["replicate"]["pair_type"],
+        idx=config['alignment']['genome']
     threads: 6
     conda:
         "../envs/bwa-mem2.yaml"
@@ -75,11 +77,13 @@ rule align_bwa2_replicates:
         """
        if [[ {params.pair_type} == "single" ]]; then
            echo "Single-end alignment for {wildcards.sample}"
-        bwa-mem2 mem {input.index} {input.fastq1} | samtools view -bS -> {output} 2> {log}
+           bwa-mem2 mem {input.index} {input.fastq1} | samtools view -bS -> {output} 2> {log}
 
        else
            # Paired-end alignment command
-           echo "Paired-end alignment for {wildcards.sample}"
-           bwa-mem2 mem {input.index} {input.fastq1} {input.fastq2} | samtools view -bS -> {output} 2> {log}
+           echo "Paired-end alignment for {wildcards.sample} {input.index}"
+           bwa-mem2 mem {params.idx} {input.fastq1} {input.fastq2} | samtools view -bS -> {output} 2> {log}
+           # bwa-mem2.avx mem {params.idx} {input.fastq1} {input.fastq2} > {output}
+
        fi
        """
