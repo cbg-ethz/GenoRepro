@@ -1,0 +1,12 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - pandas=1.5.1
+  - pip
+  - pip:
+    - psutil==5.9.3
+    - biopython==1.79
+    - csvsort==1.6.1
+    - typer==0.6.1
