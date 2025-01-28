@@ -17,6 +17,7 @@ configfile: "config/config.yaml"
 SAMPLES = config["replicate"]["samples"]
 selected_tools = config["alignment"]["selected_tools"]
 TOOLS = selected_tools
+# print(f'selected tools are : {TOOLS}')
 
 ############### HELPER FUNCTIONS #################
 def _limit_number_of_replicates(info) -> int:
@@ -42,10 +43,23 @@ if "bwa2" in selected_tools:
 
     include: "rules/bwa-mem2.smk"
 
+if "bowtie2" in selected_tools:
+    include: "rules/bowtie2.smk"
+
+if "minimap2" in selected_tools:
+    include: "rules/minimap2.smk"
+
+if "minimap2" in selected_tools:
+    include: "rules/nextgenmap.smk"
+
+if "hisat2" in selected_tools:
+    include: "rules/hisat2.smk"
+
+if "snap" in selected_tools:
+    include: "rules/snap.smk"
+
 include: "rules/parser_bam.smk"
 include: "rules/comparer_bam.smk"
-
-
 
 
 
@@ -53,11 +67,11 @@ include: "rules/comparer_bam.smk"
 
 
 def gather_checkpoint_outputs_paired(wildcards):
-    print(
-        "check_out_paired: ",
-        checkpoints.create_replicates_paired.get(**wildcards).output[0],
-        checkpoints.create_replicates_paired.get(**wildcards).output[1],
-    )
+    # print(
+    #     "check_out_paired: ",
+    #     checkpoints.create_replicates_paired.get(**wildcards).output[0],
+    #     checkpoints.create_replicates_paired.get(**wildcards).output[1],
+    # )
 
     return [
         checkpoints.create_replicates_paired.get(**wildcards).output[0],
@@ -65,10 +79,10 @@ def gather_checkpoint_outputs_paired(wildcards):
      ]
 
 def gather_checkpoint_outputs_single(wildcards):
-    print(
-        "check_out_single: ",
-        checkpoints.create_replicates_single.get(**wildcards).output[0],
-    )
+    # print(
+    #     "check_out_single: ",
+    #     checkpoints.create_replicates_single.get(**wildcards).output[0],
+    # )
     return checkpoints.create_replicates_single.get(**wildcards).output[0]
 
 
@@ -201,96 +215,82 @@ def get_input():
 
     return paths
 
-out_folder = config["assessment"]["parser_out"] + "bwa2/"
-# ext = ".fastq"
 
 
 ext = ".bam"
 
-def get_bams():
-
+def get_input_files(ext=".bam"):
     files = []  # Initialize an empty list to store all paths
 
+    for tool in TOOLS:  # Iterate over each tool
+        tool_out_folder = config["alignment"]["output_folder"] + f"{tool}/"  # Dynamically include the tool in the path
 
-    if config["replicate"]["pair_type"] == "paired":
+        if config["replicate"]["pair_type"] == "paired":
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + f"{ext.split('.')[1]}/"
+                + "{sample}_{rtype}{n}"
+                + ext,
+                sample=SAMPLES,
+                n=range(1, narr),
+                rtype=['sh', 'both'],
+                seed=config["replicate"]["seed"],
+            )
 
-
-        files += expand(
-            out_folder
-            + "seed_{seed}/" + "bam/"
-            + "{sample}_{rtype}{n}"
-            + ext,
-            sample=SAMPLES,
-            tool=TOOLS,
-            n=range(1, narr),
-            rtype=['sh', 'both'],
-            seed=config["replicate"]["seed"],
-
-        )
-
-        files +=expand(
-                out_folder
-                + "seed_{seed}/" + "bam/"
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + f"{ext.split('.')[1]}/"
                 + "{sample}_{rtype}"
                 + ext,
                 sample=SAMPLES,
-                tool=TOOLS,
-                n=range(1,narr),
+                n=range(1, narr),
                 rtype='rc',
                 seed=config["replicate"]["seed"],
-
             )
 
-        files +=expand(
-                out_folder
-                + "seed_{seed}/" + "bam/"
-                + "{sample}"
-                + ext ,
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + f"{ext.split('.')[1]}/"
+                + "{sample}_o"
+                + ext,
                 sample=SAMPLES,
-                tool=TOOLS,
-                seed=config["replicate"]["seed"]
-        )
+                seed=config["replicate"]["seed"],
+            )
 
+        else:
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + f"{ext.split('.')[1]}/"
+                + "{sample}_{rtype}{n}"
+                + ext,
+                sample=SAMPLES,
+                n=range(1, narr),
+                rtype=['sh', 'both'],
+                seed=config["replicate"]["seed"],
+            )
 
-    else:
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + f"{ext.split('.')[1]}/"
+                + "{sample}_{rtype}"
+                + ext,
+                sample=SAMPLES,
+                n=range(1, narr),
+                rtype='rc',
+                seed=config["replicate"]["seed"],
+            )
 
-        files += expand(
-            out_folder
-            + "seed_{seed}/" + "bam/"
-            + "{sample}_{rtype}{n}"
-            + ext,
-            sample=SAMPLES,
-            tool=TOOLS,
-            n=range(1,narr),
-            rtype=['sh', 'both'],
-            seed=config["replicate"]["seed"],
-
-        )
-
-        files += expand(
-            out_folder
-            + "seed_{seed}/" + "bam/"
-            + "{sample}_{rtype}"
-            + ext,
-            sample=SAMPLES,
-            tool=TOOLS,
-            n=range(1,narr),
-            rtype='rc',
-            seed=config["replicate"]["seed"],
-
-        )
-
-        files += expand(
-            out_folder
-            + "seed_{seed}/" + "bam/"
-            + "{sample}"
-            + ext,
-            sample=SAMPLES,
-            tool=TOOLS,
-            seed=config["replicate"]["seed"]
-        )
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + f"{ext.split('.')[1]}/"
+                + "{sample}_o"
+                + ext,
+                sample=SAMPLES,
+                seed=config["replicate"]["seed"],
+            )
 
     return files
+
 
 
 ext = '.csv'
@@ -386,88 +386,85 @@ ext = '.txt'
 def get_comp():
     files = []  # Initialize an empty list to store all paths
 
-    if config["replicate"]["pair_type"] == "paired":
+    for tool in TOOLS:  # Iterate over each tool
+        tool_out_folder = config["assessment"]["comparer_out"] + f"{tool}/"
+
+        if config["replicate"]["pair_type"] == "paired":
 
 
-        files += expand(
-            out_folder
-            + "seed_{seed}/" + "done/"
-            + "{sample}_o_{rtype}{n}"
-            + ext,
-            sample=SAMPLES,
-            tool=TOOLS,
-            n=range(1,narr),
-            rtype=['sh', 'both'],
-            seed=config["replicate"]["seed"],
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + "done/"
+                + "{sample}_o_{rtype}{n}"
+                + ext,
+                sample=SAMPLES,
+                tool=TOOLS,
+                n=range(1,narr),
+                rtype=['sh', 'both'],
+                seed=config["replicate"]["seed"],
 
-        )
+            )
 
-        files += expand(
-            out_folder
-            + "seed_{seed}/" + "done/"
-            + "{sample}_o_{rtype}"
-            + ext,
-            sample=SAMPLES,
-            tool=TOOLS,
-            n=range(1,narr),
-            rtype='rc',
-            seed=config["replicate"]["seed"],
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + "done/"
+                + "{sample}_o_{rtype}"
+                + ext,
+                sample=SAMPLES,
+                tool=TOOLS,
+                n=range(1,narr),
+                rtype='rc',
+                seed=config["replicate"]["seed"],
 
-        )
+            )
 
 
-    else:
+        else:
 
-        files += expand(
-            out_folder
-            + "seed_{seed}/" + "done/"
-            + "{sample}_o_{rtype}{n}"
-            + ext,
-            sample=SAMPLES,
-            tool=TOOLS,
-            n=range(1,narr),
-            rtype=['sh', 'both'],
-            seed=config["replicate"]["seed"],
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + "done/"
+                + "{sample}_o_{rtype}{n}"
+                + ext,
+                sample=SAMPLES,
+                tool=TOOLS,
+                n=range(1,narr),
+                rtype=['sh', 'both'],
+                seed=config["replicate"]["seed"],
 
-        )
+            )
 
-        files += expand(
-            out_folder
-            + "seed_{seed}/" + "done/"
-            + "{sample}_o_{rtype}"
-            + ext,
-            sample=SAMPLES,
-            tool=TOOLS,
-            n=range(1,narr),
-            rtype='rc',
-            seed=config["replicate"]["seed"],
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + "done/"
+                + "{sample}_o_{rtype}"
+                + ext,
+                sample=SAMPLES,
+                tool=TOOLS,
+                n=range(1,narr),
+                rtype='rc',
+                seed=config["replicate"]["seed"],
 
-        )
+            )
 
 
     return files
 
 
+# print(f'expected outputs: {get_input_files(ext=".bam")}')
+
+# print(f'expected outputs: {get_comp()}')
 
 
-
-
-print(f'expected outputs: {get_comp()}')
-
-# print(f"Expected path: {config['alignment']['genome']}GRCh38.fna")
-
-# rule all:
-#     input:
-#         expand(config['alignment']['genome'] + "GRCh38.fna.{ext}",
-#                ext=["0123", "amb", "ann", "bwt.2bit.64", "pac"])
-
-
+#
 rule all:
     input:
         get_comp()
-        # get_parsed_csvs()
-        # get_inputs()
-#         # gather_checkpoint_outputs_single()
+
+# rule all:
+#     input:
+#         get_input_files(ext=".bam")
+
 
 # rule all:
 #     input:
