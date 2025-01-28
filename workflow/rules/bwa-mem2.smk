@@ -34,7 +34,7 @@ rule align_bwa2_original:
     params:
         pair_type=config["replicate"]["pair_type"],
         idx=config['alignment']['genome']
-    threads: 6
+    threads: 1
     conda:
         "../envs/bwa-mem2.yaml"
     wildcard_constraints:
