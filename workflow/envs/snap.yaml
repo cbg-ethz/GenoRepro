@@ -1,0 +1,7 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - snap-aligner=2.0.2
+  - samtools=1.19.2
