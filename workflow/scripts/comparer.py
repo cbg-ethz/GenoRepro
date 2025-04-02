@@ -12,6 +12,9 @@ import typer
 import csv
 from itertools import combinations
 
+# import os,sys;x= 1+2;print(  "hi" )  # <- badly formatted + unused import + spacing issues
+
+
 from pandas import Series, DataFrame
 
 from count_fastq import read_csv, count_reads
@@ -19,8 +22,17 @@ from count_fastq import read_csv, count_reads
 
 class CSV:
     # used for filtering when extracting specific read types
-    all_columns = ['flags', 'pos', 'chr', 'CIGAR',
-                   'quality', 'edit_dist', 'MD', 'type', 'proper_pair']
+    all_columns = [
+        "flags",
+        "pos",
+        "chr",
+        "CIGAR",
+        "quality",
+        "edit_dist",
+        "MD",
+        "type",
+        "proper_pair",
+    ]
 
     def __init__(self, path_to_csv: str, is_original: bool = True):
         self.path = path_to_csv
@@ -28,10 +40,10 @@ class CSV:
         self.is_real_data = False
         self.is_opened = False
         self.label = self.get_label(self.path)
-        with open(self.path, 'r') as csv_file:
-            reader = csv.reader(csv_file, delimiter=',')
+        with open(self.path, "r") as csv_file:
+            reader = csv.reader(csv_file, delimiter=",")
             self.header = next(reader)
-            if self.header[-1][-8:] == 'sequence':
+            if self.header[-1][-8:] == "sequence":
                 self.is_real_data = True
         if self.is_real_data:
             if is_original:
@@ -44,13 +56,13 @@ class CSV:
 
     @staticmethod
     def get_label(path_to_csv):
-        with open(path_to_csv, 'r') as csv_file:
-            reader = csv.reader(csv_file, delimiter=',')
+        with open(path_to_csv, "r") as csv_file:
+            reader = csv.reader(csv_file, delimiter=",")
             header = next(reader)
             return header[0][:-5]
 
     def _open(self):
-        self.opened = open(self.path, 'r')
+        self.opened = open(self.path, "r")
         self.is_opened = True
         return self.opened
 
@@ -60,30 +72,30 @@ class CSV:
 
     def format_output_path(self, suffix: str):
         head, tail = os.path.split(self.path)
-        tails = tail.split('.')
+        tails = tail.split(".")
         tails.insert(-1, suffix)
-        tail = '.'.join(tails)
+        tail = ".".join(tails)
         output_path = os.path.join(head, tail)
         return output_path
 
     def create_sub_csv(self, clone_header=True):
-        new_csv_path = self.format_output_path('sub')
-        with open(self.path, 'r') as csv_master:
-            with open(new_csv_path, 'w') as csv_sub:
+        new_csv_path = self.format_output_path("sub")
+        with open(self.path, "r") as csv_master:
+            with open(new_csv_path, "w") as csv_sub:
                 if clone_header:
-                    reader = csv.reader(csv_master, delimiter=',')
-                    writer = csv.writer(csv_sub, delimiter=',')
+                    reader = csv.reader(csv_master, delimiter=",")
+                    writer = csv.writer(csv_sub, delimiter=",")
                     header = next(reader)
                     writer.writerow(header[:-1])
         return new_csv_path
 
     def create_rv_csv(self, column: int = 9):
         BUFFER_SIZE = 100_000
-        new_csv_path = self.format_output_path(suffix='rv')
-        with open(self.path, 'r') as csv_master:
-            with open(new_csv_path, 'w') as csv_sub:
-                reader = csv.reader(csv_master, delimiter=',')
-                writer = csv.writer(csv_sub, delimiter=',')
+        new_csv_path = self.format_output_path(suffix="rv")
+        with open(self.path, "r") as csv_master:
+            with open(new_csv_path, "w") as csv_sub:
+                reader = csv.reader(csv_master, delimiter=",")
+                writer = csv.writer(csv_sub, delimiter=",")
                 header = next(reader)
                 writer.writerow(header)
                 buffered_rows = []
@@ -103,8 +115,8 @@ class CSV:
 
     def _append(self):
         """Appends rows to the SUB(!) CSV file"""
-        with open(self.sub, 'a') as csv_file:
-            writer = csv.writer(csv_file, delimiter=',')
+        with open(self.sub, "a") as csv_file:
+            writer = csv.writer(csv_file, delimiter=",")
             writer.writerows(self.sub_buffered_reads)
         self.sub_buffered_reads = []
 
@@ -121,7 +133,7 @@ class CSV:
 
     def get_reader(self):
         stream = self._open()
-        reader = csv.reader(stream, delimiter=',')
+        reader = csv.reader(stream, delimiter=",")
         return reader
 
 
@@ -148,8 +160,8 @@ class ComparisonObject:
     data: dict
 
     def __post_init__(self):
-        self.label = self.data['label']
-        self.path_to_csv = self.data['path_to_csv']
+        self.label = self.data["label"]
+        self.path_to_csv = self.data["path_to_csv"]
         compare_condition = self.label.strip() and self.path_to_csv.strip()
         self.is_comparable = bool(compare_condition)
 
@@ -183,19 +195,21 @@ class Comparer:
         List of booleans just to check how many samples to compare
     """
 
-    def __init__(self, input_data: dict,
-                 fastq_reads: int,
-                 output_path: str = '',
-                 reads_to_extract: list = [],
-                 filtered_columns: list = []
-                 ) -> None:
+    def __init__(
+        self,
+        input_data: dict,
+        fastq_reads: int,
+        output_path: str = "",
+        reads_to_extract: list = [],
+        filtered_columns: list = [],
+    ) -> None:
         self.input_data = input_data
         self.fastq_reads = fastq_reads
         self.output_path = self._parse_output_path(output_path)
         self.reads_to_extract = reads_to_extract
         self.filtered_columns = filtered_columns
-        with open(self.output_path, 'w') as output:
-            headers = ['FEATURE', 'READS', 'PERCENTAGE']
+        with open(self.output_path, "w") as output:
+            headers = ["FEATURE", "READS", "PERCENTAGE"]
             writer = csv.DictWriter(output, fieldnames=headers)
             writer.writeheader()
         self._check_input()
@@ -221,55 +235,47 @@ class Comparer:
         else:
             percentage = round(100 * reads / total_reads, 3)
 
-        with open(self.output_path, 'a') as f:
-            header = ['FEATURE', 'READS', 'PERCENTAGE']
-            row = {
-                "FEATURE": feature,
-                "READS": reads,
-                "PERCENTAGE": percentage
-            }
+        with open(self.output_path, "a") as f:
+            header = ["FEATURE", "READS", "PERCENTAGE"]
+            row = {"FEATURE": feature, "READS": reads, "PERCENTAGE": percentage}
             dictwriter_object = csv.DictWriter(f, header)
             dictwriter_object.writerow(row)
 
     @staticmethod
     def _parse_output_path(output_path) -> str:
         """Generates output filepath in case it is not given or invalid"""
-        DEFAULT_FILENAME = 'compare_output.csv'
+        DEFAULT_FILENAME = "compare_output.csv"
         if not output_path:
-            output_path = f'./{DEFAULT_FILENAME}'
+            output_path = f"./{DEFAULT_FILENAME}"
         else:
             head, tail = os.path.split(output_path)
             if not tail:
                 tail = DEFAULT_FILENAME
-            if not tail.endswith('.csv'):
-                tail += '.csv'
+            if not tail.endswith(".csv"):
+                tail += ".csv"
             output_path = os.path.join(head, tail)
         return output_path
 
     def _get_extract_path(self, read_type: str):
         return self.output_path[:-4] + f".{read_type}.csv"
 
-    def save_to_csv(self, df: pd.DataFrame,
-                    read_type: str
-                    ):
+    def save_to_csv(self, df: pd.DataFrame, read_type: str):
         columns = "|".join(self.filtered_columns)
         csv_path = self._get_extract_path(read_type)
         df.filter(regex=columns).to_csv(csv_path)
 
     def _check_input(self) -> None:
         """Raises exception if input lacks required data"""
-        self.original_data = ComparisonObject(self.input_data['original'])
-        self.reversed_data = ComparisonObject(self.input_data['reversed'])
-        self.shuffled_data = ComparisonObject(self.input_data['shuffled'])
-        self.samples = [self.original_data,
-                        self.reversed_data,
-                        self.shuffled_data]
+        self.original_data = ComparisonObject(self.input_data["original"])
+        self.reversed_data = ComparisonObject(self.input_data["reversed"])
+        self.shuffled_data = ComparisonObject(self.input_data["shuffled"])
+        self.samples = [self.original_data, self.reversed_data, self.shuffled_data]
         self.comparable = [sample.is_comparable for sample in self.samples]
         if not self.original_data.is_comparable:
             print(self.original_data)
-            raise Exception('Original sample data not provided')
+            raise Exception("Original sample data not provided")
         if sum(self.comparable) < 2:
-            raise Exception('At least 2 samples including original required')
+            raise Exception("At least 2 samples including original required")
 
     def merge_dataframes(self) -> pd.DataFrame:
         """Merges 2 or 3 dataframes into one in case of multiple tables"""
@@ -280,30 +286,22 @@ class Comparer:
         norm_paths = [os.path.normpath(path) for path in paths_to_csv]
         unique_paths = list(dict.fromkeys(norm_paths))
         # create list of dataframes
-        print('Importing CSV(s)...')
-        self.imported_dfs = [
-            pd.read_csv(path, index_col=0)
-            for path in unique_paths
-        ]
-        print('\nTables successfully imported')
-        print(f'RAM usage: {self.get_current_memory_usage()}')
+        print("Importing CSV(s)...")
+        self.imported_dfs = [pd.read_csv(path, index_col=0) for path in unique_paths]
+        print("\nTables successfully imported")
+        print(f"RAM usage: {self.get_current_memory_usage()}")
         # merging if there are multiple tables
         if len(self.imported_dfs) == 1:
             return self.imported_dfs[0]
         elif len(self.imported_dfs) == 2:
-            return pd.merge(
-                *self.imported_dfs,
-                left_index=True,
-                right_index=True
-            )
+            return pd.merge(*self.imported_dfs, left_index=True, right_index=True)
         elif len(self.imported_dfs) == 3:
-            return pd.merge(self.imported_dfs[0],
-                            self.imported_dfs[1],
-                            left_index=True,
-                            right_index=True
-                            ).merge(self.imported_dfs[2],
-                                    left_index=True,
-                                    right_index=True)
+            return pd.merge(
+                self.imported_dfs[0],
+                self.imported_dfs[1],
+                left_index=True,
+                right_index=True,
+            ).merge(self.imported_dfs[2], left_index=True, right_index=True)
 
     @staticmethod
     def is_single_ended(dataframe: pd.DataFrame) -> bool:
@@ -326,9 +324,11 @@ class Comparer:
             # total_reads_type1 = self.imported_dfs[0].shape[0]
             # total_reads_type2 = self.imported_dfs[1].shape[0]
 
-            self.write_row(feature='FASTQ_reads',
-                           reads=self.fastq_reads,
-                           total_reads=self.fastq_reads)
+            self.write_row(
+                feature="FASTQ_reads",
+                reads=self.fastq_reads,
+                total_reads=self.fastq_reads,
+            )
 
     @staticmethod
     def get_current_memory_usage(in_gigabytes=True) -> float:
@@ -344,9 +344,9 @@ class Comparer:
 
         labels = self.get_labels()
         mapping_types = {
-            'unmapped': ['U', 'U'],
-            'forward_mapped': ['P', 'U'],
-            'backward_mapped': ['U', 'P']
+            "unmapped": ["U", "U"],
+            "forward_mapped": ["P", "U"],
+            "backward_mapped": ["U", "P"],
         }
 
         # Initialize a dictionary to store dataframes for each type and label
@@ -355,18 +355,24 @@ class Comparer:
         # Iterate over each mapping type and label
         for mtype, mvalue in mapping_types.items():
             for label in labels:
-                dfs[mtype][label] = df[df[f'{label}_type'].apply(lambda x: ast.literal_eval(x) == mvalue)]
+                dfs[mtype][label] = df[
+                    df[f"{label}_type"].apply(lambda x: ast.literal_eval(x) == mvalue)
+                ]
 
-                if '_g' in label:
+                if "_g" in label:
                     # Log the count of reads per type and label
-                    self.write_row(feature=f"{mtype}_type1",
-                                   reads=dfs[mtype][label].shape[0],
-                                   total_reads=self.fastq_reads)
+                    self.write_row(
+                        feature=f"{mtype}_type1",
+                        reads=dfs[mtype][label].shape[0],
+                        total_reads=self.fastq_reads,
+                    )
 
                 else:
-                    self.write_row(feature=f"{mtype}_type2",
-                                   reads=dfs[mtype][label].shape[0],
-                                   total_reads=self.fastq_reads)
+                    self.write_row(
+                        feature=f"{mtype}_type2",
+                        reads=dfs[mtype][label].shape[0],
+                        total_reads=self.fastq_reads,
+                    )
 
     # Define a function to check for unmapped to mapped transitions
     def count_inconsistent(self, df: pd.DataFrame):
@@ -374,37 +380,43 @@ class Comparer:
         l1, l2 = self.get_labels()
 
         df_inconsistent_type1 = df.loc[
-            df[f'{l1}_type'].apply(lambda x: ast.literal_eval(x) == ['P', 'P']) &
-            df[f'{l2}_type'].apply(
+            df[f"{l1}_type"].apply(lambda x: ast.literal_eval(x) == ["P", "P"])
+            & df[f"{l2}_type"].apply(
                 lambda x: (
-                        ast.literal_eval(x) == ['U', 'P'] or
-                        ast.literal_eval(x) == ['U', 'P'] or
-                        ast.literal_eval(x) == ['P', 'U']
+                    ast.literal_eval(x) == ["U", "P"]
+                    or ast.literal_eval(x) == ["U", "P"]
+                    or ast.literal_eval(x) == ["P", "U"]
                 )
             )
-            ]
+        ]
 
         df_inconsistent_type2 = df.loc[
-            df[f'{l1}_type'].apply(lambda x: ast.literal_eval(x) == ['U', 'U']) &
-            df[f'{l2}_type'].apply(
+            df[f"{l1}_type"].apply(lambda x: ast.literal_eval(x) == ["U", "U"])
+            & df[f"{l2}_type"].apply(
                 lambda x: (
-                        ast.literal_eval(x) == ['P', 'U'] or
-                        ast.literal_eval(x) == ['U', 'P'] or
-                        ast.literal_eval(x) == ['P', 'P']
+                    ast.literal_eval(x) == ["P", "U"]
+                    or ast.literal_eval(x) == ["U", "P"]
+                    or ast.literal_eval(x) == ["P", "P"]
                 )
             )
-            ]
+        ]
 
-        self.write_row(feature='inconsistent_type1',
-                       reads=df_inconsistent_type1.shape[0],
-                       total_reads=self.fastq_reads)
+        self.write_row(
+            feature="inconsistent_type1",
+            reads=df_inconsistent_type1.shape[0],
+            total_reads=self.fastq_reads,
+        )
 
-        self.write_row(feature='inconsistent_type2',
-                       reads=df_inconsistent_type2.shape[0],
-                       total_reads=self.fastq_reads)
+        self.write_row(
+            feature="inconsistent_type2",
+            reads=df_inconsistent_type2.shape[0],
+            total_reads=self.fastq_reads,
+        )
 
-        if len(df_inconsistent_type1) > 0: print('inconsistent_type1: ', df_inconsistent_type1.index[0])
-        if len(df_inconsistent_type2) > 0: print('inconsistent_type2: ', df_inconsistent_type2.index[0])
+        if len(df_inconsistent_type1) > 0:
+            print("inconsistent_type1: ", df_inconsistent_type1.index[0])
+        if len(df_inconsistent_type2) > 0:
+            print("inconsistent_type2: ", df_inconsistent_type2.index[0])
 
         # self.write_row(feature='backward_to_forward',
         #                reads=df_backward_to_forward.shape[0],
@@ -414,23 +426,29 @@ class Comparer:
 
         l1, l2 = self.get_labels()
 
-        df_proper_g = df[df[f'{l1}_proper_pair'] == 1]
-        df_proper_rep = df[df[f'{l2}_proper_pair'] == 1]
+        df_proper_g = df[df[f"{l1}_proper_pair"] == 1]
+        df_proper_rep = df[df[f"{l2}_proper_pair"] == 1]
 
         # Log the count of reads per type and label
-        self.write_row(feature=f"proper_type1",
-                       reads=df_proper_g.shape[0],
-                       total_reads=self.fastq_reads)
+        self.write_row(
+            feature=f"proper_type1",
+            reads=df_proper_g.shape[0],
+            total_reads=self.fastq_reads,
+        )
 
-        self.write_row(feature=f"proper_type2",
-                       reads=df_proper_rep.shape[0],
-                       total_reads=self.fastq_reads)
+        self.write_row(
+            feature=f"proper_type2",
+            reads=df_proper_rep.shape[0],
+            total_reads=self.fastq_reads,
+        )
 
         df_common_proper = df_proper_g.loc[df_proper_g.index.isin(df_proper_rep.index)]
 
-        self.write_row(feature=f"common_proper",
-                       reads=df_common_proper.shape[0],
-                       total_reads=self.fastq_reads)
+        self.write_row(
+            feature=f"common_proper",
+            reads=df_common_proper.shape[0],
+            total_reads=self.fastq_reads,
+        )
 
         return df_common_proper
 
@@ -438,25 +456,36 @@ class Comparer:
 
         l1, l2 = self.get_labels()
 
-        df_mapped_g = df.loc[df[f'{l1}_type'].apply(lambda x: ast.literal_eval(x) == ['P', 'P'])]
-        df_mapped_rep = df.loc[df[f'{l2}_type'].apply(lambda x: ast.literal_eval(x) == ['P', 'P'])]
+        df_mapped_g = df.loc[
+            df[f"{l1}_type"].apply(lambda x: ast.literal_eval(x) == ["P", "P"])
+        ]
+        df_mapped_rep = df.loc[
+            df[f"{l2}_type"].apply(lambda x: ast.literal_eval(x) == ["P", "P"])
+        ]
 
         # Log the count of reads per type and label
-        self.write_row(feature=f"mapped_type1",
-                       reads=df_mapped_g.shape[0],
-                       total_reads=self.fastq_reads)
+        self.write_row(
+            feature=f"mapped_type1",
+            reads=df_mapped_g.shape[0],
+            total_reads=self.fastq_reads,
+        )
 
-        self.write_row(feature=f"mapped_type2",
-                       reads=df_mapped_rep.shape[0],
-                       total_reads=self.fastq_reads)
+        self.write_row(
+            feature=f"mapped_type2",
+            reads=df_mapped_rep.shape[0],
+            total_reads=self.fastq_reads,
+        )
 
         df_common_mapped = df_mapped_g.loc[df_mapped_g.index.isin(df_mapped_rep.index)]
 
-        self.write_row(feature=f"common_mapped",
-                       reads=df_common_mapped.shape[0],
-                       total_reads=self.fastq_reads)
+        self.write_row(
+            feature=f"common_mapped",
+            reads=df_common_mapped.shape[0],
+            total_reads=self.fastq_reads,
+        )
 
-        if len(df_common_mapped) > 0 : print('common_mapped: ', df_common_mapped.index[0])
+        if len(df_common_mapped) > 0:
+            print("common_mapped: ", df_common_mapped.index[0])
 
         return df_common_mapped
 
@@ -466,19 +495,20 @@ class Comparer:
         if sum(self.comparable) == 2:
             l1, l2 = self.get_labels()
             df_nonidentical = df.loc[
-                (df[f'{l1}_pos'] !=
-                 df[f'{l2}_pos']) |
-                (df[f'{l1}_edit_dist'] !=
-                 df[f'{l2}_edit_dist'])
-                ]
+                (df[f"{l1}_pos"] != df[f"{l2}_pos"])
+                | (df[f"{l1}_edit_dist"] != df[f"{l2}_edit_dist"])
+            ]
             # if len(df_nonidentical) > 0:
             #     print(df_nonidentical.index)
 
-            self.write_row(feature='Non-identical',
-                           reads=df_nonidentical.shape[0],
-                           total_reads=df.shape[0])
+            self.write_row(
+                feature="Non-identical",
+                reads=df_nonidentical.shape[0],
+                total_reads=df.shape[0],
+            )
 
-            if len(df_nonidentical) > 0 : print('non_identical: ', df_nonidentical.index[0])
+            if len(df_nonidentical) > 0:
+                print("non_identical: ", df_nonidentical.index[0])
 
             return df_nonidentical
 
@@ -488,11 +518,9 @@ class Comparer:
         if sum(self.comparable) == 2:
             l1, l2 = self.get_labels()
             df_identical = df.loc[
-                (df[f'{l1}_pos'] ==
-                 df[f'{l2}_pos']) &
-                (df[f'{l1}_edit_dist'] ==
-                 df[f'{l2}_edit_dist'])
-                ]
+                (df[f"{l1}_pos"] == df[f"{l2}_pos"])
+                & (df[f"{l1}_edit_dist"] == df[f"{l2}_edit_dist"])
+            ]
             # self.write_row(feature='Non-identical',
             #                reads=df_identical.shape[0],
             #                total_reads=self.fastq_reads)
@@ -500,34 +528,35 @@ class Comparer:
 
     def count_CG_IL(self, df: pd.DataFrame, df_non: pd.DataFrame):
         """Counts reads with consistent global and inconsistent local
-                alignment (common proper reads mapped to the same position
-                with different edit distance), writes output row to the csv"""
+        alignment (common proper reads mapped to the same position
+        with different edit distance), writes output row to the csv"""
         if sum(self.comparable) == 2:
             l1, l2 = self.get_labels()
             df_CG_IL = df.loc[
-                (df[f'{l1}_pos'] ==
-                 df[f'{l2}_pos']) &
-                (df[f'{l1}_edit_dist'] !=
-                 df[f'{l2}_edit_dist'])
-                ]
-            self.write_row(feature='Consistent_global_inconsistent_local',
-                           reads=df_CG_IL.shape[0],
-                           total_reads=df_non.shape[0])
-            if len(df_CG_IL) > 0: print('CG_IL', df_CG_IL.index[0])
+                (df[f"{l1}_pos"] == df[f"{l2}_pos"])
+                & (df[f"{l1}_edit_dist"] != df[f"{l2}_edit_dist"])
+            ]
+            self.write_row(
+                feature="Consistent_global_inconsistent_local",
+                reads=df_CG_IL.shape[0],
+                total_reads=df_non.shape[0],
+            )
+            if len(df_CG_IL) > 0:
+                print("CG_IL", df_CG_IL.index[0])
 
         elif sum(self.comparable) == 3:
             l1, l2, l3 = self.get_labels()
 
             def count_CG_IL_between(label1: str, label2: str):
                 df_CG_IL = df.loc[
-                    (df[f'{label1}_pos'] ==
-                     df[f'{label2}_pos']) &
-                    (df[f'{label1}_edit_dist'] !=
-                     df[f'{label2}_edit_dist'])
-                    ]
-                self.write_row(feature=f'CG_IL_{label1}_AND_{label2}',
-                               reads=df_CG_IL.shape[0],
-                               total_reads=df_non.shape[0])
+                    (df[f"{label1}_pos"] == df[f"{label2}_pos"])
+                    & (df[f"{label1}_edit_dist"] != df[f"{label2}_edit_dist"])
+                ]
+                self.write_row(
+                    feature=f"CG_IL_{label1}_AND_{label2}",
+                    reads=df_CG_IL.shape[0],
+                    total_reads=df_non.shape[0],
+                )
 
             count_CG_IL_between(l1, l2)
             count_CG_IL_between(l1, l3)
@@ -543,30 +572,31 @@ class Comparer:
         if sum(self.comparable) == 2:
             l1, l2 = self.get_labels()
             df_IG = df.loc[
-                (df[f'{l1}_pos'] !=
-                 df[f'{l2}_pos']) &
-                (df[f'{l1}_edit_dist'] !=
-                 df[f'{l2}_edit_dist'])
-                ]
-            self.write_row(feature='Inconsistent_global',
-                           reads=df_IG.shape[0],
-                           total_reads=df_non.shape[0])
+                (df[f"{l1}_pos"] != df[f"{l2}_pos"])
+                & (df[f"{l1}_edit_dist"] != df[f"{l2}_edit_dist"])
+            ]
+            self.write_row(
+                feature="Inconsistent_global",
+                reads=df_IG.shape[0],
+                total_reads=df_non.shape[0],
+            )
 
-            if len(df_IG) > 0: print('IG', df_IG.index[0])
+            if len(df_IG) > 0:
+                print("IG", df_IG.index[0])
 
         elif sum(self.comparable) == 3:
             l1, l2, l3 = self.get_labels()
 
             def count_IG_between(label1: str, label2: str):
                 df_IG = df.loc[
-                    (df[f'{label1}_pos'] !=
-                     df[f'{label2}_pos']) &
-                    (df[f'{label1}_edit_dist'] !=
-                     df[f'{label2}_edit_dist'])
-                    ]
-                self.write_row(feature=f'IG_{label1}_AND_{label2}',
-                               reads=df_IG.shape[0],
-                               total_reads=df_non.shape[0])
+                    (df[f"{label1}_pos"] != df[f"{label2}_pos"])
+                    & (df[f"{label1}_edit_dist"] != df[f"{label2}_edit_dist"])
+                ]
+                self.write_row(
+                    feature=f"IG_{label1}_AND_{label2}",
+                    reads=df_IG.shape[0],
+                    total_reads=df_non.shape[0],
+                )
 
             count_IG_between(l1, l2)
             count_IG_between(l1, l3)
@@ -582,33 +612,31 @@ class Comparer:
         if sum(self.comparable) == 2:
             l1, l2 = self.get_labels()
             df_MM = df.loc[
-                (df[f'{l1}_pos'] !=
-                 df[f'{l2}_pos']) &
-                (df[f'{l1}_edit_dist'] ==
-                 df[f'{l2}_edit_dist'])
-                ]
-            self.write_row(feature='multi_mapped',
-                           reads=df_MM.shape[0],
-                           total_reads=df_non.shape[0])
+                (df[f"{l1}_pos"] != df[f"{l2}_pos"])
+                & (df[f"{l1}_edit_dist"] == df[f"{l2}_edit_dist"])
+            ]
+            self.write_row(
+                feature="multi_mapped",
+                reads=df_MM.shape[0],
+                total_reads=df_non.shape[0],
+            )
 
-            if len(df_MM) > 0: print('MM: ', df_MM.index[0])
-
+            if len(df_MM) > 0:
+                print("MM: ", df_MM.index[0])
 
         elif sum(self.comparable) == 3:
             l1, l2, l3 = self.get_labels()
 
             def count_MM_between(label1: str, label2: str):
                 df_MM = df.loc[
-                    (df[f'{label1}_pos'] !=
-                     df[f'{label2}_pos']) &
-                    (df[f'{label1}_edit_dist'] ==
-                     df[f'{label2}_edit_dist'])
-                    ]
-                self.write_row(feature='multi_mapped_' +
-                                       f'{label1}_AND_{label2}',
-                               reads=df_MM.shape[0],
-
-                               total_reads=df.shape[0])
+                    (df[f"{label1}_pos"] != df[f"{label2}_pos"])
+                    & (df[f"{label1}_edit_dist"] == df[f"{label2}_edit_dist"])
+                ]
+                self.write_row(
+                    feature="multi_mapped_" + f"{label1}_AND_{label2}",
+                    reads=df_MM.shape[0],
+                    total_reads=df.shape[0],
+                )
 
             count_MM_between(l1, l2)
             count_MM_between(l1, l3)
@@ -623,32 +651,42 @@ class Comparer:
         if sum(self.comparable) == 2:
             l1, l2 = self.get_labels()
 
-            df_qual = df.loc[
-                (df[f'{l1}_quality'] !=
-                 df[f'{l2}_quality'])
-            ]
-            self.write_row(feature='quality_change',
-                           reads=df_qual.shape[0],
-                           total_reads=self.fastq_reads)
+            df_qual = df.loc[(df[f"{l1}_quality"] != df[f"{l2}_quality"])]
+            self.write_row(
+                feature="quality_change",
+                reads=df_qual.shape[0],
+                total_reads=self.fastq_reads,
+            )
 
-            if len(df_qual) > 0: print('quality_change', df_qual.index[0])
+            if len(df_qual) > 0:
+                print("quality_change", df_qual.index[0])
 
     def find_and_count_highest_quality_proper_mapped_reads(self, df: pd.DataFrame):
         # Retrieve labels dynamically
         l1, l2 = self.get_labels()
 
         # Check if quality columns contain valid data
-        if df[f'{l1}_quality'].isnull().all() and df[f'{l2}_quality'].isnull().all():
-            self.write_row(feature=f'high_quality_mapped_type1', reads="NA", total_reads=self.fastq_reads)
-            self.write_row(feature=f'high_quality_mapped_type2', reads="NA", total_reads=self.fastq_reads)
-            print("All quality values are None for both datasets. Skipping calculation.")
+        if df[f"{l1}_quality"].isnull().all() and df[f"{l2}_quality"].isnull().all():
+            self.write_row(
+                feature=f"high_quality_mapped_type1",
+                reads="NA",
+                total_reads=self.fastq_reads,
+            )
+            self.write_row(
+                feature=f"high_quality_mapped_type2",
+                reads="NA",
+                total_reads=self.fastq_reads,
+            )
+            print(
+                "All quality values are None for both datasets. Skipping calculation."
+            )
             return
 
         # Assuming quality columns store string representations of lists
-        df[f'{l1}_parsed_quality'] = df[f'{l1}_quality'].apply(
+        df[f"{l1}_parsed_quality"] = df[f"{l1}_quality"].apply(
             lambda x: ast.literal_eval(x) if pd.notnull(x) else []
         )
-        df[f'{l2}_parsed_quality'] = df[f'{l2}_quality'].apply(
+        df[f"{l2}_parsed_quality"] = df[f"{l2}_quality"].apply(
             lambda x: ast.literal_eval(x) if pd.notnull(x) else []
         )
 
@@ -657,14 +695,12 @@ class Comparer:
 
         # Find the highest quality for l1
         highest_quality_l1 = max(
-            (max(row) for row in df[f'{l1}_parsed_quality'] if row),
-            default=None
+            (max(row) for row in df[f"{l1}_parsed_quality"] if row), default=None
         )
 
         # Find the highest quality for l2
         highest_quality_l2 = max(
-            (max(row) for row in df[f'{l2}_parsed_quality'] if row),
-            default=None
+            (max(row) for row in df[f"{l2}_parsed_quality"] if row), default=None
         )
 
         # Determine the overall highest quality
@@ -678,22 +714,30 @@ class Comparer:
 
         # Filter for rows where both quality scores match the highest quality and are marked as properly paired
         df_high_quality_proper_l1 = df[
-            df[f'{l1}_parsed_quality'].apply(is_both_highest) & (df[f'{l1}_proper_pair'] == 1)]
+            df[f"{l1}_parsed_quality"].apply(is_both_highest)
+            & (df[f"{l1}_proper_pair"] == 1)
+        ]
         df_high_quality_proper_l2 = df[
-            df[f'{l2}_parsed_quality'].apply(is_both_highest) & (df[f'{l2}_proper_pair'] == 1)]
+            df[f"{l2}_parsed_quality"].apply(is_both_highest)
+            & (df[f"{l2}_proper_pair"] == 1)
+        ]
 
         # Log the number of high-quality, properly mapped reads for each dataset
-        self.write_row(feature=f'high_quality_mapped_type1',
-                       reads=df_high_quality_proper_l1.shape[0],
-                       total_reads=self.fastq_reads)
-        self.write_row(feature=f'high_quality_mapped_type2',
-                       reads=df_high_quality_proper_l2.shape[0],
-                       total_reads=self.fastq_reads)
+        self.write_row(
+            feature=f"high_quality_mapped_type1",
+            reads=df_high_quality_proper_l1.shape[0],
+            total_reads=self.fastq_reads,
+        )
+        self.write_row(
+            feature=f"high_quality_mapped_type2",
+            reads=df_high_quality_proper_l2.shape[0],
+            total_reads=self.fastq_reads,
+        )
 
         if len(df_high_quality_proper_l1) > 0:
-            print('high_quality_mapped_type1: ', df_high_quality_proper_l1.index[0])
+            print("high_quality_mapped_type1: ", df_high_quality_proper_l1.index[0])
         if len(df_high_quality_proper_l2) > 0:
-            print('high_quality_mapped_type2: ', df_high_quality_proper_l2.index[0])
+            print("high_quality_mapped_type2: ", df_high_quality_proper_l2.index[0])
 
     def compare(self):
         df = self.merge_dataframes()
@@ -719,65 +763,60 @@ app = typer.Typer(add_completion=False)
 
 
 @app.command()
-def main(input_csvs: List[Path] = typer.Argument(
-    ...,
-    exists=True,
-    file_okay=True,
-    dir_okay=False,
-    readable=True,
-    show_default=False,
-    help="List of CSV files to compare; min: 2 files"
-),
-        fastq_file: Path = typer.Argument(
-            ...,
-            exists=True,
-            file_okay=True,
-            dir_okay=False,
-            readable=True,
-            show_default=False,
-            help="Path to FASTQ File of the sample"
-        ),
-        output_path: Path = typer.Option(
-            "./comparer_output.csv",
-            "--output",
-            "-o",
-            help="Path to output directory or file."
-        ),
-        reads_to_extract: Optional[List[str]] = typer.Option(
-            [],
-            "--extract",
-            "-x",
-            help="Extract specific type of common reads"
-        ),
-        filtered_columns: Optional[List[str]] = typer.Option(
-            CSV.all_columns,
-            "--filter",
-            "-f",
-            help="Filter columns for extraction of specific read types"
-        )
-
+def main(
+    input_csvs: List[Path] = typer.Argument(
+        ...,
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        show_default=False,
+        help="List of CSV files to compare; min: 2 files",
+    ),
+    fastq_file: Path = typer.Argument(
+        ...,
+        exists=True,
+        file_okay=True,
+        dir_okay=False,
+        readable=True,
+        show_default=False,
+        help="Path to FASTQ File of the sample",
+    ),
+    output_path: Path = typer.Option(
+        "./comparer_output.csv",
+        "--output",
+        "-o",
+        help="Path to output directory or file.",
+    ),
+    reads_to_extract: Optional[List[str]] = typer.Option(
+        [], "--extract", "-x", help="Extract specific type of common reads"
+    ),
+    filtered_columns: Optional[List[str]] = typer.Option(
+        CSV.all_columns,
+        "--filter",
+        "-f",
+        help="Filter columns for extraction of specific read types",
+    ),
 ):
     """
     Subsampling and comparing tool for parsed CSV files.
 
     """
     read_types_notation = {
-        "all": "Extract every read type listed below "
-               "to an individual file.",
-        "ID": "Identical. Common reads identical by "
-              "position and edit distance.",
+        "all": "Extract every read type listed below " "to an individual file.",
+        "ID": "Identical. Common reads identical by " "position and edit distance.",
         "CG_IL": "Consistent Global and Inconsistent Local. "
-                 "Common unambiguous reads mapped to the same "
-                 "position with different edit distance.",
+        "Common unambiguous reads mapped to the same "
+        "position with different edit distance.",
         "IT1": "Inconsistent Type 1. Common unambiguous reads "
-               "mapped only with original data (Type 1).",
+        "mapped only with original data (Type 1).",
         "IT2": "Inconsistent Type 1. Common unambiguous reads "
-               "only with replicated data (Type 2).",
+        "only with replicated data (Type 2).",
         "IG": "Inconsistent Global. Common unambiguous reads "
-              "mapped to the different position with "
-              "different edit distance.",
+        "mapped to the different position with "
+        "different edit distance.",
         "MM": "Hidden 'Multi-Mapped'. Common unambiguous reads mapped "
-              "to different positions with the same edit distance."
+        "to different positions with the same edit distance.",
     }
 
     column_names_notation = {
@@ -796,9 +835,12 @@ def main(input_csvs: List[Path] = typer.Argument(
     for read_type in reads_to_extract:
         if read_type not in read_types_notation.keys():
             print("INCORRECT INPUT. No such read type:", read_type)
-            print("Only the following types of reads",
-                  "are available for extraction:",
-                  ", ".join(read_types_notation.keys()), "\n")
+            print(
+                "Only the following types of reads",
+                "are available for extraction:",
+                ", ".join(read_types_notation.keys()),
+                "\n",
+            )
             for _type, description in read_types_notation.items():
                 print(f"{_type}: \t{description}")
             print()
@@ -808,9 +850,12 @@ def main(input_csvs: List[Path] = typer.Argument(
     for column in filtered_columns:
         if column not in column_names_notation.keys():
             print("INCORRECT INPUT. No such column name:", column)
-            print("Only the following column names",
-                  "are available for filtering:",
-                  ", ".join(column_names_notation.keys()), "\n")
+            print(
+                "Only the following column names",
+                "are available for filtering:",
+                ", ".join(column_names_notation.keys()),
+                "\n",
+            )
             for _type, description in column_names_notation.items():
                 print(f"{_type}: \t{description}")
             print()
@@ -822,33 +867,21 @@ def main(input_csvs: List[Path] = typer.Argument(
     paths = input_csvs
 
     input_data = {
-        'original': {
-            'label': csvs[0].label,
-            'path_to_csv': str(paths[0])
-        },
-
-        'reversed': {
-            'label': csvs[1].label,
-            'path_to_csv': str(paths[1])
-        },
-
-        'shuffled': {
-            'label': '',
-            'path_to_csv': ''
-        },
+        "original": {"label": csvs[0].label, "path_to_csv": str(paths[0])},
+        "reversed": {"label": csvs[1].label, "path_to_csv": str(paths[1])},
+        "shuffled": {"label": "", "path_to_csv": ""},
     }
 
     if len(csvs) > 2:
-        input_data['shuffled'] = {
-            'label': csvs[2].label,
-            'path_to_csv': str(paths[2])
-        }
+        input_data["shuffled"] = {"label": csvs[2].label, "path_to_csv": str(paths[2])}
 
-    comparer = Comparer(input_data,
-                        output_path=str(output_path),
-                        reads_to_extract=reads_to_extract,
-                        filtered_columns=filtered_columns,
-                        fastq_reads=fastq_reads)
+    comparer = Comparer(
+        input_data,
+        output_path=str(output_path),
+        reads_to_extract=reads_to_extract,
+        filtered_columns=filtered_columns,
+        fastq_reads=fastq_reads,
+    )
     comparer.compare()
 
 
