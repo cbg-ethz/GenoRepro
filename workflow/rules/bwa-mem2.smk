@@ -23,10 +23,10 @@ rule align_bwa2_original:
     input:
         index=multiext(config['alignment']['genome'], ".amb", ".ann", ".bwt.2bit.64", ".pac", ".0123"),
         fastq1=(lambda wildcards: config["replicate"]["input_folder"] + f"{wildcards.sample}_1.fastq"
-        if config['replicate']['pair_type'] == 'paired'
-        else config["replicate"]["input_folder"] + f"{wildcards.sample}.fastq"),
+            if config['replicate']['pair_type'] == 'paired'
+            else config["replicate"]["input_folder"] + f"{wildcards.sample}.fastq"),
         fastq2=lambda wildcards: config["replicate"]["input_folder"] + f"{wildcards.sample}_2.fastq"
-        if config['replicate']['pair_type'] == 'paired' else [],
+            if config['replicate']['pair_type'] == 'paired' else [],
     output:
         config["alignment"]["output_folder"] + "bwa2/seed_{seed}/" + "bam/{sample}_{ending}.bam"
     log:
