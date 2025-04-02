@@ -56,7 +56,14 @@ if "hisat2" in selected_tools:
     include: "rules/hisat2.smk"
 
 if "snap" in selected_tools:
+    print("SNAP selected")
     include: "rules/snap.smk"
+
+if "subread" in selected_tools:
+    include: "rules/subread.smk"
+
+if "smalt" in selected_tools:
+    include: "rules/smalt.smk"
 
 include: "rules/parser_bam.smk"
 include: "rules/comparer_bam.smk"
@@ -226,27 +233,27 @@ def get_input_files(ext=".bam"):
         tool_out_folder = config["alignment"]["output_folder"] + f"{tool}/"  # Dynamically include the tool in the path
 
         if config["replicate"]["pair_type"] == "paired":
-            files += expand(
-                tool_out_folder
-                + "seed_{seed}/" + f"{ext.split('.')[1]}/"
-                + "{sample}_{rtype}{n}"
-                + ext,
-                sample=SAMPLES,
-                n=range(1, narr),
-                rtype=['sh', 'both'],
-                seed=config["replicate"]["seed"],
-            )
-
-            files += expand(
-                tool_out_folder
-                + "seed_{seed}/" + f"{ext.split('.')[1]}/"
-                + "{sample}_{rtype}"
-                + ext,
-                sample=SAMPLES,
-                n=range(1, narr),
-                rtype='rc',
-                seed=config["replicate"]["seed"],
-            )
+            # files += expand(
+            #     tool_out_folder
+            #     + "seed_{seed}/" + f"{ext.split('.')[1]}/"
+            #     + "{sample}_{rtype}{n}"
+            #     + ext,
+            #     sample=SAMPLES,
+            #     n=range(1, narr),
+            #     rtype=['sh', 'both'],
+            #     seed=config["replicate"]["seed"],
+            # )
+            #
+            # files += expand(
+            #     tool_out_folder
+            #     + "seed_{seed}/" + f"{ext.split('.')[1]}/"
+            #     + "{sample}_{rtype}"
+            #     + ext,
+            #     sample=SAMPLES,
+            #     n=range(1, narr),
+            #     rtype='rc',
+            #     seed=config["replicate"]["seed"],
+            # )
 
             files += expand(
                 tool_out_folder
@@ -451,15 +458,24 @@ def get_comp():
     return files
 
 
-# print(f'expected outputs: {get_input_files(ext=".bam")}')
+print(f'expected outputs: {get_input_files(ext=".bam")}')
 
 # print(f'expected outputs: {get_comp()}')
 
 
-#
 rule all:
     input:
-        get_comp()
+        "/Users/peicer/projects/github_releases/reproducibility/resources/index2/Genome",
+        "/Users/peicer/projects/github_releases/reproducibility/resources/index2/GenomeIndex",
+        "/Users/peicer/projects/github_releases/reproducibility/resources/index2/GenomeIndexHash",
+        "/Users/peicer/projects/github_releases/reproducibility/resources/index2/OverflowTable"
+        # get_input_files()
+
+
+
+# rule all:
+#     input:
+#         get_comp()
 
 # rule all:
 #     input:
@@ -479,7 +495,7 @@ rule all:
 # rule all:
 #     input:
 #         "../work/replicates/seed_1/ERR009308_sh1_1.fastq"  # Replace with your actual test paths
-#         # "../work/replicates/1/ERR009308_sh1_2.fastq",
-#         # "../work/replicates/1/ERR009308_sh2_1.fastq",
-#         # "../work/replicates/1/ERR009308_sh2_2.fastq"
+#         "../work/replicates/1/ERR009308_sh1_2.fastq",
+#         "../work/replicates/1/ERR009308_sh2_1.fastq",
+#         "../work/replicates/1/ERR009308_sh2_2.fastq"
 
