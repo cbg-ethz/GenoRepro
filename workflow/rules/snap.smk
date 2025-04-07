@@ -31,7 +31,7 @@ rule align_snap_original:
     log:
         config["alignment"]["output_folder"] + "snap/seed_{seed}/" + "log/{sample}_{ending}.log",
     params:
-        idx=config['alignment']['genome']
+        idx=config['alignment']['genome_path']
     threads: 1
     conda:
         "../envs/snap.yaml"
@@ -58,7 +58,7 @@ rule align_snap_replicates:
     log:
         config["alignment"]["output_folder"] + "snap/seed_{seed}/" + "log/{sample}_{ending}.log",
     params:
-        idx=config['alignment']['genome']
+        idx=config['alignment']['genome_path']
     threads: 1
     conda:
         "../envs/snap.yaml"
