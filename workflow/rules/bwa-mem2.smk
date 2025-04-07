@@ -28,9 +28,9 @@ rule align_bwa2_original:
         fastq2=lambda wildcards: config["replicate"]["input_folder"] + f"{wildcards.sample}_2.fastq"
             if config['replicate']['pair_type'] == 'paired' else [],
     output:
-        config["alignment"]["output_folder"] + "bwa2/seed_{seed}/" + "bam/{sample}_{ending}.bam"
+        config["alignment"]["output_folder"] + "bwa-mem2/seed_{seed}/" + "bam/{sample}_{ending}.bam"
     log:
-        config["alignment"]["output_folder"] + "bwa2/seed_{seed}/" + "log/{sample}_{ending}.log"
+        config["alignment"]["output_folder"] + "bwa-mem2/seed_{seed}/" + "log/{sample}_{ending}.log"
     params:
         pair_type=config["replicate"]["pair_type"],
         idx=config['alignment']['genome']
@@ -62,9 +62,9 @@ rule align_bwa2_replicates:
         fastq2=lambda wildcards: gather_checkpoint_outputs_paired(wildcards)[1] \
             if config['replicate']['pair_type'] == 'paired' else [],
     output:
-        config["alignment"]["output_folder"] + "bwa2/seed_{seed}/" + "bam/{sample}_{ending}.bam",
+        config["alignment"]["output_folder"] + "bwa-mem2/seed_{seed}/" + "bam/{sample}_{ending}.bam",
     log:
-        config["alignment"]["output_folder"] + "bwa2/seed_{seed}/" + "log/{sample}_{ending}.log"
+        config["alignment"]["output_folder"] + "bwa-mem2/seed_{seed}/" + "log/{sample}_{ending}.log"
     params:
         pair_type=config["replicate"]["pair_type"],
         idx=config['alignment']['genome']
