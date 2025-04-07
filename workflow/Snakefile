@@ -233,27 +233,27 @@ def get_input_files(ext=".bam"):
         tool_out_folder = config["alignment"]["output_folder"] + f"{tool}/"  # Dynamically include the tool in the path
 
         if config["replicate"]["pair_type"] == "paired":
-            # files += expand(
-            #     tool_out_folder
-            #     + "seed_{seed}/" + f"{ext.split('.')[1]}/"
-            #     + "{sample}_{rtype}{n}"
-            #     + ext,
-            #     sample=SAMPLES,
-            #     n=range(1, narr),
-            #     rtype=['sh', 'both'],
-            #     seed=config["replicate"]["seed"],
-            # )
-            #
-            # files += expand(
-            #     tool_out_folder
-            #     + "seed_{seed}/" + f"{ext.split('.')[1]}/"
-            #     + "{sample}_{rtype}"
-            #     + ext,
-            #     sample=SAMPLES,
-            #     n=range(1, narr),
-            #     rtype='rc',
-            #     seed=config["replicate"]["seed"],
-            # )
+            files += expand(
+            tool_out_folder
+                + "seed_{seed}/" + f"{ext.split('.')[1]}/"
+                + "{sample}_{rtype}{n}"
+                + ext,
+                sample=SAMPLES,
+                n=range(1, narr),
+                rtype=['sh', 'both'],
+                seed=config["replicate"]["seed"],
+            )
+
+            files += expand(
+                tool_out_folder
+                + "seed_{seed}/" + f"{ext.split('.')[1]}/"
+                + "{sample}_{rtype}"
+                + ext,
+                sample=SAMPLES,
+                n=range(1, narr),
+                rtype='rc',
+                seed=config["replicate"]["seed"],
+            )
 
             files += expand(
                 tool_out_folder
@@ -465,7 +465,8 @@ print(f'expected outputs: {get_input_files(ext=".bam")}')
 
 rule all:
     input:
-        "/Users/peicer/projects/github_releases/reproducibility/resources/index2/toy_reference.fna.mmi",
+        get_input_files(ext=".bam"),
+        #"/Users/peicer/projects/github_releases/reproducibility/resources/index2/toy_reference.fna.mmi",
         # "/Users/peicer/projects/github_releases/reproducibility/resources/index2/Genome",
         # "/Users/peicer/projects/github_releases/reproducibility/resources/index2/GenomeIndex",
         # "/Users/peicer/projects/github_releases/reproducibility/resources/index2/GenomeIndexHash",
