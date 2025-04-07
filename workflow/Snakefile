@@ -465,10 +465,11 @@ print(f'expected outputs: {get_input_files(ext=".bam")}')
 
 rule all:
     input:
-        "/Users/peicer/projects/github_releases/reproducibility/resources/index2/Genome",
-        "/Users/peicer/projects/github_releases/reproducibility/resources/index2/GenomeIndex",
-        "/Users/peicer/projects/github_releases/reproducibility/resources/index2/GenomeIndexHash",
-        "/Users/peicer/projects/github_releases/reproducibility/resources/index2/OverflowTable"
+        "/Users/peicer/projects/github_releases/reproducibility/resources/index2/toy_reference.fna.mmi",
+        # "/Users/peicer/projects/github_releases/reproducibility/resources/index2/Genome",
+        # "/Users/peicer/projects/github_releases/reproducibility/resources/index2/GenomeIndex",
+        # "/Users/peicer/projects/github_releases/reproducibility/resources/index2/GenomeIndexHash",
+        # "/Users/peicer/projects/github_releases/reproducibility/resources/index2/OverflowTable"
         # get_input_files()
 
 
