@@ -41,3 +41,30 @@ rule align_snap_original:
         """
         snap-aligner {params.idx} {input.fastq1} {input.fastq2} -o -bam {output}
         """
+
+rule align_snap_replicates:
+    input:
+        index=[config['alignment']['genome_path'] + 'Genome',
+               config['alignment']['genome_path'] + 'GenomeIndex',
+               config['alignment']['genome_path'] + 'GenomeIndexHash',
+               config['alignment']['genome_path'] + 'OverflowTable',],
+        fastq1=lambda wildcards: gather_checkpoint_outputs_paired(wildcards)[0] \
+            if config['replicate']['pair_type'] == 'paired' else \
+            gather_checkpoint_outputs_single(wildcards),
+        fastq2=lambda wildcards: gather_checkpoint_outputs_paired(wildcards)[1] \
+            if config['replicate']['pair_type'] == 'paired' else [],
+    output:
+        config["alignment"]["output_folder"] + "snap/seed_{seed}/" + "bam/{sample}_{ending}.bam"
+    log:
+        config["alignment"]["output_folder"] + "snap/seed_{seed}/" + "log/{sample}_{ending}.log",
+    params:
+        idx=config['alignment']['genome']
+    threads: 1
+    conda:
+        "../envs/snap.yaml"
+    wildcard_constraints:
+        ending="(sh\\d+|both\\d+|rc)",
+    shell:
+        """
+        snap-aligner {params.idx} {input.fastq1} {input.fastq2} -o -bam {output}
+        """
