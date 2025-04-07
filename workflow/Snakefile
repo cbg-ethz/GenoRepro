@@ -39,7 +39,7 @@ if config["replicate"]["pair_type"] == "single":
 
     include: "rules/create_replicates_single.smk"
 
-if "bwa2" in selected_tools:
+if "bwa-mem2" in selected_tools:
 
     include: "rules/bwa-mem2.smk"
 
@@ -49,7 +49,7 @@ if "bowtie2" in selected_tools:
 if "minimap2" in selected_tools:
     include: "rules/minimap2.smk"
 
-if "minimap2" in selected_tools:
+if "nextgenmap" in selected_tools:
     include: "rules/nextgenmap.smk"
 
 if "hisat2" in selected_tools:
@@ -465,7 +465,8 @@ print(f'expected outputs: {get_input_files(ext=".bam")}')
 
 rule all:
     input:
-        get_input_files(ext=".bam"),
+        get_comp()
+        # get_input_files(ext=".bam"),
         #"/Users/peicer/projects/github_releases/reproducibility/resources/index2/toy_reference.fna.mmi",
         # "/Users/peicer/projects/github_releases/reproducibility/resources/index2/Genome",
         # "/Users/peicer/projects/github_releases/reproducibility/resources/index2/GenomeIndex",
