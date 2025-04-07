@@ -39,7 +39,7 @@ rule align_snap_original:
         ending="o",
     shell:
         """
-        snap-aligner {params.idx} {input.fastq1} {input.fastq2} -o -bam {output}
+        snap-aligner paired {params.idx} {input.fastq1} {input.fastq2} -o -bam {output}
         """
 
 rule align_snap_replicates:
@@ -66,5 +66,5 @@ rule align_snap_replicates:
         ending="(sh\\d+|both\\d+|rc)",
     shell:
         """
-        snap-aligner {params.idx} {input.fastq1} {input.fastq2} -o -bam {output}
+        snap-aligner paired {params.idx} {input.fastq1} {input.fastq2} -o -bam {output}
         """
