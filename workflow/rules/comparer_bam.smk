@@ -21,7 +21,7 @@ rule compare_bam:
         """
         echo "done_file: {output.done_file}"
 
-        python {REPROFLOW_BASEDIR}/scripts/comparer.py \
+        python {SNAKEFILE_DIR}/scripts/comparer.py \
             {input.first_file} {input.second_file} {input.fastq_file} \
             -x all -f pos -f edit_dist -f quality \
             -o {output.csv_file}

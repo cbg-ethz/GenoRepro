@@ -4,14 +4,64 @@ from snakemake.io import expand, glob_wildcards
 
 LOGGER = logging.getLogger("snakemake.logging")
 
-if not "REPROFLOW_BASEDIR" in dir():
-    # NOTE when used from a module workflow.basedir (and main_snakefile) always point to most-outer wrapping layer, workflow.
-    # current_basedir (and snakefile) to the current module
-    REPROFLOW_BASEDIR = workflow.current_basedir
-    # print(REPROFLOW_BASEDIR)
-LOGGER.info("REPROFLOW_BASEDIR = %s",REPROFLOW_BASEDIR)
+import os
+from pathlib import Path
 
-configfile: "config/config.yaml"
+# ----------------------------------------------------------------
+# 1) REPROFLOW_BASEDIR = the directory *you* cd into when running snakemake
+# ----------------------------------------------------------------
+REPROFLOW_BASEDIR = Path().resolve()   # e.g. /Users/peicer/Desktop/GenoRepro
+
+# ----------------------------------------------------------------
+# 2) SNAKEFILE_DIR = the directory *where this Snakefile lives*
+# ----------------------------------------------------------------
+SNAKEFILE_DIR = Path(workflow.current_basedir)
+LOGGER.info("Working dir (REPROFLOW_BASEDIR) = %s", REPROFLOW_BASEDIR)
+LOGGER.info("Snakefile dir (SNAKEFILE_DIR)     = %s", SNAKEFILE_DIR)
+
+# ----------------------------------------------------------------
+# 3) Resolve your config‐paths *under* the working dir
+# ----------------------------------------------------------------
+def _abs_in_cwd(relpath):
+    return str(REPROFLOW_BASEDIR / relpath.lstrip("./").lstrip("../"))
+
+for section, key in [
+    ("replicate",  "input_folder"),
+    ("replicate",  "output_folder"),
+    ("alignment",  "output_folder"),
+    ("assessment","parser_out"),
+    ("assessment","comparer_out"),
+]:
+    p = _abs_in_cwd(config[section][key])
+    if not p.endswith(os.sep):
+        p = p + os.sep
+    config[section][key] = p
+
+LOGGER.info(
+    "Resolved folders:\n"
+    "  samples      → %s\n"
+    "  replicates   → %s\n"
+    "  align_out    → %s\n"
+    "  parser_out   → %s\n"
+    "  comparer_out → %s",
+    config["replicate"]["input_folder"],
+    config["replicate"]["output_folder"],
+    config["alignment"]["output_folder"],
+    config["assessment"]["parser_out"],
+    config["assessment"]["comparer_out"],
+)
+
+# ----------------------------------------------------------------
+# 4) Resolve your conda‐env YAML *under* the Snakefile dir
+# ----------------------------------------------------------------
+config["alignment"]["envs"] = {
+    tool: str(SNAKEFILE_DIR / relpath.lstrip("./").lstrip("../"))
+    for tool, relpath in config["alignment"].get("envs", {}).items()
+}
+LOGGER.info("Resolved conda YAMLs:\n%s", config["alignment"]["envs"])
+conda_pref = os.environ.get("SNAKEMAKE_CONDA_PREFIX", "<not set>")
+logger.info("SNAKEMAKE_CONDA_PREFIX = %s", conda_pref)
+
 
 
 SAMPLES = config["replicate"]["samples"]
@@ -458,9 +508,9 @@ def get_comp():
     return files
 
 
-print(f'expected outputs: {get_input_files(ext=".bam")}')
+# print(f'expected outputs: {get_input_files(ext=".bam")}')
 
-# print(f'expected outputs: {get_comp()}')
+print(f'expected outputs: {get_comp()}')
 
 
 rule all:

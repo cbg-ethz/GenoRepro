@@ -4,7 +4,7 @@ rule index_minimap2:
     output:
         "{genome}.mmi"
     conda:
-        "../envs/minimap2.yaml",
+        config["alignment"]["envs"]["minimap2"]
     threads: 1
     shell:
         """
@@ -22,11 +22,11 @@ rule align_minimap2_original:
     output:
         config["alignment"]["output_folder"] + "minimap2/seed_{seed}/" + "bam/{sample}_{ending}.bam"
     log:
-        config["alignment"]["output_folder"] + "bwa2/seed_{seed}/" + "log/{sample}_{ending}.log"
+        config["alignment"]["output_folder"] + "minimap2/seed_{seed}/" + "log/{sample}_{ending}.log"
     params:
         idx=config['alignment']['genome']
     conda:
-        "../envs/minimap2.yaml"
+        config["alignment"]["envs"]["minimap2"],
     wildcard_constraints:
         ending="o",
     threads: 1
@@ -52,7 +52,7 @@ rule align_minimap2_replicates:
         idx=config['alignment']['genome']
     threads: 1
     conda:
-        "../envs/minimap2.yaml"
+        config["alignment"]["envs"]["minimap2"],
     wildcard_constraints:
         ending="(sh\\d+|both\\d+|rc)"
     shell:

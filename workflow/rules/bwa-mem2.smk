@@ -10,7 +10,7 @@ rule index_bwa:
     # log:
     #     "logs/bwa-mem2_index/{genome}.log",sna
     conda:
-        "../envs/bwa-mem2.yaml",
+        config["alignment"]["envs"]["bwa-mem2"]
 
     shell:
         """
@@ -70,7 +70,7 @@ rule align_bwa2_replicates:
         idx=config['alignment']['genome']
     threads: 1
     conda:
-        "../envs/bwa-mem2.yaml"
+        config["alignment"]["envs"]["bwa-mem2"]
     wildcard_constraints:
         ending="(sh\\d+|both\\d+|rc)"
     shell:

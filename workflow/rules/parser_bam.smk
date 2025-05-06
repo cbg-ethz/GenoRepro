@@ -9,7 +9,7 @@ rule parse_bam:
         ending="(sh\\d+|both\\d+|rc+|o)"
     shell:
         """
-        python {REPROFLOW_BASEDIR}/scripts/parser_bam.py {input} -o {output}
+        python {SNAKEFILE_DIR}/scripts/parser_bam.py {input} -o {output}
         """
 
 

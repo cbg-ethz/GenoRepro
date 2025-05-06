@@ -20,7 +20,7 @@ checkpoint create_replicates_paired:
         """
         echo "output1 fastq1: {output.out1}"
 
-        python {REPROFLOW_BASEDIR}/scripts/create_replicates.py \
+        python {SNAKEFILE_DIR}/scripts/create_replicates.py \
             -f1 {input.fastq1} \
             -f2 {input.fastq2} \
             -r {params.rep_types} \
