@@ -10,7 +10,7 @@ rule index_bowtie2:
         "{genome}.rev.2.bt2",
 
     conda:
-        "../envs/bowtie2.yaml",
+        config["alignment"]["envs"]["bowtie2"],
     shell:
         """
         echo "bowtie2 indexing {input.index}"
@@ -68,7 +68,7 @@ rule align_bowtie2_replicates:
         idx=config['alignment']['genome']
     threads: 6
     conda:
-        "../envs/bowtie2.yaml"
+        config["alignment"]["envs"]["bowtie2"],
     wildcard_constraints:
         ending="(sh\\d+|both\\d+|rc)"
     shell:

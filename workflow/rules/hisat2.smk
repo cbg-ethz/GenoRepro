@@ -16,7 +16,7 @@ rule index_hisat2:
     params:
         base_name=config['alignment']['genome']
     conda:
-        "../envs/hisat2.yaml"
+        config["alignment"]["envs"]["hisat2"],
     shell:
         """
         hisat2-build {input.index} {params.base_name}
@@ -67,7 +67,7 @@ rule align_hisat2_replicates:
         base_name=config['alignment']['genome']
     threads: 1
     conda:
-        "../envs/hisat2.yaml"
+        config["alignment"]["envs"]["hisat2"]
     wildcard_constraints:
         ending="(sh\\d+|both\\d+|rc)"
     shell:

@@ -11,7 +11,7 @@ rule index_subread:
             ".reads"
         ),
     conda:
-        "../envs/subread.yaml",
+        config["alignment"]["envs"]["subread"],
     params:
         base_name=config['alignment']['genome_base']
     shell:
@@ -59,7 +59,7 @@ rule align_subread_replicates:
         idx = config['alignment']['genome']
     threads: 1
     conda:
-        "../envs/subread.yaml"
+        config["alignment"]["envs"]["subread"]
     wildcard_constraints:
         ending="(sh\\d+|both\\d+|rc)",
     shell:

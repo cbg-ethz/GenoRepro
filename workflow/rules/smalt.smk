@@ -5,7 +5,7 @@ rule index_smalt:
         "{genome}.sma",
         "{genome}.smi",
     conda:
-        "../envs/smalt.yaml",
+        config["alignment"]["envs"]["smalt"],
 
     shell:
         """
@@ -30,7 +30,7 @@ rule align_smalt_original:
         idx = config['alignment']['genome']
     threads: 1
     conda:
-        "../envs/smalt.yaml"
+        config["alignment"]["envs"]["smalt"]
     wildcard_constraints:
         ending="o",
     shell:

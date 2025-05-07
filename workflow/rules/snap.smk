@@ -1,13 +1,13 @@
 rule index_snap:
     input:
-        index=config['alignment']['genome_path']
+        index=config['alignment']['genome']
     output:
         Genome=config['alignment']['genome_path'] + 'Genome',
         GenomeIndex=config['alignment']['genome_path'] + 'GenomeIndex',
         GenomeIndexHash=config['alignment']['genome_path'] + 'GenomeIndexHash',
         OverflowTable=config['alignment']['genome_path'] + 'OverflowTable'
     conda:
-        "../envs/snap.yaml"
+        config["alignment"]["envs"]["snap"],
     params:
         out_folder=config['alignment']['genome_path']
     shell:
@@ -61,7 +61,7 @@ rule align_snap_replicates:
         idx=config['alignment']['genome_path']
     threads: 1
     conda:
-        "../envs/snap.yaml"
+        config["alignment"]["envs"]["snap"],
     wildcard_constraints:
         ending="(sh\\d+|both\\d+|rc)",
     shell:

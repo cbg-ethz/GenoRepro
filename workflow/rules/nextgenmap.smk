@@ -5,7 +5,7 @@ rule index_nextgenmap:
         "{genome}-enc.2.ngm",
         "{genome}-ht-13-2.3.ngm",
     conda:
-        "../envs/nextgenmap.yaml",
+        config["alignment"]["envs"]["nextgenmap"],
     shell:
         """
         ngm -r {input.index}
@@ -28,7 +28,7 @@ rule align_nextgenmap_original:
         idx=config['alignment']['genome']
     threads: 1
     conda:
-        "../envs/nextgenmap.yaml"
+        config["alignment"]["envs"]["nextgenmap"]
     wildcard_constraints:
         ending="o",
     shell:
